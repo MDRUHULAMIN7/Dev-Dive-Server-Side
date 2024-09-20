@@ -1,58 +1,44 @@
 const express = require('express');
 const cors = require('cors');
-const jwt = require('jsonwebtoken')
-const app = express();
 const { MongoClient, ServerApiVersion } = require('mongodb');
+require('dotenv').config();
+
+const app = express();
 const port = process.env.PORT || 5000;
-require('dotenv').config()
 
-// midleware
-
+// Middleware
 app.use(cors());
 app.use(express.json());
-// mongodb
 
-
+// MongoDB setup
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
 });
 
 async function run() {
-  try {
-//   database collection
-const datbase = client.db("DevDive");
-const usersCollection = datbase.collection('users')
+    try {
+        const database = client.db("DevDive");
+        const usersCollection = database.collection('users');
 
-// oparations
-
-
-
-// ------------
-    await client.db("admin").command({ ping: 1 });
-    console.log(" Devdive successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-
-  }
+        await client.db("admin").command({ ping: 1 });
+        console.log("DevDive successfully connected to MongoDB!");
+    } catch (error) {
+        console.error('Error connecting to MongoDB:', error);
+    }
 }
 run().catch(console.dir);
 
 
+// Root Route
+app.get('/', (req, res) => {
+    res.send('DevDive is running');
+});
 
-// mongodb
-
-app.get( '/' ,(req,res)=>{
-    res.send('Devdive is  running');
-})
-
-app.listen(port,()=>{
-    console.log(`Devdive is running on:${port}`);
-})
-
+app.listen(port, () => {
+    console.log(`DevDive is running on port ${port}`);
+});
