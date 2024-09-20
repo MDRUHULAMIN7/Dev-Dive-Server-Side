@@ -25,7 +25,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     //   database collection
-    const datbase = client.db("SoulTie");
+    const datbase = client.db("DevDive");
     const usersCollection = datbase.collection("users");
 
     // oparations
