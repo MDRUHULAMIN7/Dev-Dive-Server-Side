@@ -6,14 +6,12 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
-// middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 
 // mongodb
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -24,10 +22,11 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    const database = client.db("SoulTie");
+    //   Database collection
+    const database = client.db("DevDive");
     const usersCollection = database.collection("users");
 
-    // operations
+    // Operations
     app.get("/allUsers", async (req, res) => {
       const cursor = usersCollection.find();
       const result = await cursor.toArray();
