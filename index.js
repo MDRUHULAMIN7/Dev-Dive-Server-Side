@@ -22,7 +22,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    //   Database collection
+    // Database collection
     const database = client.db("DevDive");
     const usersCollection = database.collection("users");
 
