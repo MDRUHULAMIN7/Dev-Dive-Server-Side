@@ -27,13 +27,13 @@ async function run() {
     const usersCollection = database.collection("users");
 
     // Operations
-    app.get("/allUsers", async (req, res) => {
+    app.get("/users", async (req, res) => {
       const cursor = usersCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     });
 
-    app.get("/users", async (req, res) => {
+    app.get("/user", async (req, res) => {
       const { email } = req.query;
       console.log(email);
 
@@ -54,7 +54,7 @@ async function run() {
       }
     });
 
-    app.post("users", async (req, res) => {
+    app.post("/users", async (req, res) => {
       const user = req.body;
       console.log(user);
       const query = { email: user.email };
