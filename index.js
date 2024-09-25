@@ -22,9 +22,12 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Database collection
-    const database = client.db("DevDive");
-    const usersCollection = database.collection("users");
+    //   database collection
+    const datbase = client.db("DevDive");
+    const usersCollection = datbase.collection("users");
+    const blogsCollection = datbase.collection("blogs");
+
+    // oparations
 
     // Operations
     app.get("/users", async (req, res) => {
@@ -85,6 +88,43 @@ async function run() {
       }
     });
 
+
+
+    // get users from databse 
+
+    app.get('/get-users',async(req,res)=>{
+      const result = await usersCollection.find().toArray();
+      res.send(result)
+    })
+
+    // update-user-role
+    app.put(`/update-user-role/:email`,async(req,res)=>{
+      const newRole = req.body.data
+      const {email} = req.params;
+      const query = {email:email}
+      const updateDoc ={
+        $set:{
+          role : newRole
+        }
+      }
+
+      const result = usersCollection.updateOne(query,updateDoc)
+      res.send(result)
+    })
+
+    // post-blog
+
+    app.post('/post-blog',async(req,res)=>{
+      const Info = req.body;
+      const result = await blogsCollection.insertOne(Info);
+      res.send(result)
+    })
+
+    // get blogs
+    app.get('/get-blog',async(req,res)=>{
+      result = await blogsCollection.find().toArray();
+      res.send(result)
+    })
     // ------------
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
