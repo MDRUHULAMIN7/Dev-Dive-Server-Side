@@ -23,9 +23,10 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     //   database collection
-    const datbase = client.db("DevDive");
-    const usersCollection = datbase.collection("users");
-    const blogsCollection = datbase.collection("blogs");
+    const database = client.db("DevDive");
+    const usersCollection = database.collection("users");
+    const blogsCollection = database.collection("blogs");
+    const postsCollection = database.collection("posts");
 
     // oparations
 
@@ -125,6 +126,45 @@ async function run() {
       result = await blogsCollection.find().toArray();
       res.send(result)
     })
+
+  //post
+
+  app.post('/posts', async (req, res) => {
+    try {
+      const { title, tags, body, link, images } = req.body;
+
+      // Insert the post into MongoDB
+      const result = await postsCollection.insertOne({
+        title,
+        tags,
+        body,
+        link,
+        images,
+        userEmail,
+        username,
+        profilePicture,
+        createdAt: new Date(), // Optional: To track when the post was created
+      });
+
+      res.status(200).json({ message: 'Post added successfully', postId: result.insertedId });
+    } catch (error) {
+      console.error('Error adding post:', error);
+      res.status(500).json({ message: 'Failed to add post' });
+    }
+  });
+
+  // get posts
+  app.get("/posts", async (req, res) => {
+    try {
+      const posts = await postsCollection.find().toArray();
+      res.status(200).json(posts);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      res.status(500).json({ message: "Failed to fetch posts" });
+    }
+  });
+
+
     // ------------
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
