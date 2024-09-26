@@ -123,7 +123,7 @@ async function run() {
     // get blogs
     app.get('/get-blog',async(req,res)=>{
       result = await blogsCollection.find().toArray();
-      res.send(result)
+      res.send(result);
     })
     // ------------
     await client.db("admin").command({ ping: 1 });
