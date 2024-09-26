@@ -95,76 +95,78 @@ async function run() {
 
     // get users from databse 
 
-    app.get('/get-users',async(req,res)=>{
+    app.get('/get-users', async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result)
     })
 
     // update-user-role
-    app.put(`/update-user-role/:email`,async(req,res)=>{
+    app.put(`/update-user-role/:email`, async (req, res) => {
       const newRole = req.body.data
-      const {email} = req.params;
-      const query = {email:email}
-      const updateDoc ={
-        $set:{
-          role : newRole
+      const { email } = req.params;
+      const query = { email: email }
+      const updateDoc = {
+        $set: {
+          role: newRole
         }
       }
 
-      const result = usersCollection.updateOne(query,updateDoc)
+      const result = usersCollection.updateOne(query, updateDoc)
       res.send(result)
     })
 
     // post-blog
 
-    app.post('/post-blog',async(req,res)=>{
+    app.post('/post-blog', async (req, res) => {
       const Info = req.body;
       const result = await blogsCollection.insertOne(Info);
       res.send(result)
     })
 
     // get blogs
-    app.get('/get-blog',async(req,res)=>{
+    app.get('/get-blog', async (req, res) => {
       result = await blogsCollection.find().toArray();
       res.send(result);
     })
 
-  //post
+    //post
 
-  app.post('/posts', async (req, res) => {
-    try {
-      const { title, tags, body, link, images } = req.body;
+    app.post('/main-posts', async (req, res) => {
+      try {
+        const { title, tags, body, link, images, userEmail, username, profilePicture } = req.body;
 
-      // Insert the post into MongoDB
-      const result = await postsCollection.insertOne({
-        title,
-        tags,
-        body,
-        link,
-        images,
-        userEmail,
-        username,
-        profilePicture,
-        createdAt: new Date(), // Optional: To track when the post was created
-      });
+        // Insert the post into MongoDB
+        const result = await postsCollection.insertOne({
+          title,
+          tags,
+          body,
+          link,
+          images,
+          likes: 0,
+          dislikes: 0,
+          userEmail,
+          username,
+          profilePicture,
+          createdAt: new Date(), // Optional: To track when the post was created
+        });
 
-      res.status(200).json({ message: 'Post added successfully', postId: result.insertedId });
-    } catch (error) {
-      console.error('Error adding post:', error);
-      res.status(500).json({ message: 'Failed to add post' });
-    }
-  });
+        res.status(200).json({ message: 'Post added successfully', postId: result.insertedId });
+      } catch (error) {
+        console.error('Error adding post:', error);
+        res.status(500).json({ message: 'Failed to add post' });
+      }
+    });
 
-  // get posts
-  app.get("/posts", async (req, res) => {
-    try {
-      const posts = await postsCollection.find().toArray();
-      res.status(200).json(posts);
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-      res.status(500).json({ message: "Failed to fetch posts" });
-    }
-  });
+    // get posts
+    app.get("/main-posts", async (req, res) => {
+      try {
+        const posts = await postsCollection.find().toArray();
+        res.status(200).json(posts);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+        res.status(500).json({ message: "Failed to fetch posts" });
+      }
+    });
 
 
   // post likes
