@@ -115,7 +115,23 @@ async function run() {
       }
     });
 
+    app.put("/gitHubUsers/:username", async (req, res) => {
+      const username = req.params.username;
+      const loginData = req.body;
+      const query = { name: username };
 
+      const update = {
+        $set: loginData,
+      };
+
+      const result = await usersCollection.updateOne(query, update);
+
+      if (result.modifiedCount > 0) {
+        res.send({ message: "User login time updated successfully", result });
+      } else {
+        res.send({ message: "No changes made to the user login time", result });
+      }
+    });
 
 
     // get users from databse
