@@ -28,6 +28,12 @@ async function run() {
     const blogsCollection = database.collection("blogs");
     const postsCollection = database.collection("posts");
 
+    // All Operations By Nur
+    // Import and use the separated route
+    const Nur = require("./Nur/Nur")(usersCollection);
+    app.use(Nur);
+
+    // End Of All Operations By Nur
 
     // get users from database
     app.get("/get-users", async (req, res) => {
