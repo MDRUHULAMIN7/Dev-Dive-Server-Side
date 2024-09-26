@@ -1,8 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const { format } = require('date-fns');
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
@@ -27,6 +28,7 @@ async function run() {
     const usersCollection = database.collection("users");
     const blogsCollection = database.collection("blogs");
     const postsCollection = database.collection("posts");
+    const likesCollection = database.collection("likes");
 
     // oparations
 
@@ -164,6 +166,47 @@ async function run() {
     }
   });
 
+
+  // post likes
+app.post('/like/:id',async(req,res)=>{
+  const{ id} = req.params;
+  const user = req.body.newuser;
+  const now = Date.now()
+  const formattedDateTime = format(now, 'EEEE, MMMM dd, yyyy, hh:mm a');
+  const query1={_id:new ObjectId(id)}
+  const query2={email:user.email};
+  const query3 = {postId : id}
+  const forLike = await postsCollection.findOne(query1)
+  const likesInfo={
+    postId:id,
+    ...user,
+    likeTime:formattedDateTime
+  }
+ 
+  const updateDoc1={
+    $set:{likes:forLike.likes+1}
+  }
+  const updateDoc2={
+    $set:{likes:forLike.likes-1}
+  }
+
+  const result5 = await likesCollection.findOne(query3);
+  res.send(result5)
+  console.log(result5);
+  if(result5.email == user.email){
+    const result3 = likesCollection.deleteOne(query2);
+    const result4 = await postsCollection.updateOne(query1,updateDoc2)
+    return res.send({result3,result4}) 
+  }
+
+
+  const result1 = await postsCollection.updateOne(query1,updateDoc1)
+   
+  const result = await likesCollection.insertOne(likesInfo);
+  res.send({result,result1})
+  // res.send({id,user,userName})
+})
+ 
 
     // ------------
     await client.db("admin").command({ ping: 1 });
