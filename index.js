@@ -194,8 +194,8 @@ app.post('/like/:id',async(req,res)=>{
 
   const result5 = await likesCollection.findOne(query3);
   res.send(result5)
-  console.log(result5);
-  if(result5.email == user.email){
+ 
+  if(  result5?.email === user?.email){
     const result3 = likesCollection.deleteOne(query2);
     const result4 = await postsCollection.updateOne(query1,updateDoc2)
     return res.send({result3,result4}) 
