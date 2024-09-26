@@ -70,22 +70,12 @@ async function run() {
       res.send(result);
     });
 
-    // get posts
-    app.get("/posts", async (req, res) => {
-      try {
-        const posts = await postsCollection.find().toArray();
-        res.status(200).json(posts);
-      } catch (error) {
-        console.error("Error fetching posts:", error);
-        res.status(500).json({ message: "Failed to fetch posts" });
-      }
-    });
 
     //post
 
-    app.post("/posts", async (req, res) => {
+    app.post("/main-posts", async (req, res) => {
       try {
-        const { title, tags, body, link, images } = req.body;
+        const { title, tags, body, link, images,userEmail,username,profilePicture, } = req.body;
 
         // Insert the post into MongoDB
         const result = await postsCollection.insertOne({
@@ -97,6 +87,8 @@ async function run() {
           userEmail,
           username,
           profilePicture,
+          likes : 0,
+          dislikes : 0,
           createdAt: new Date(), // Optional: To track when the post was created
         });
 
@@ -109,6 +101,18 @@ async function run() {
         res.status(500).json({ message: "Failed to add post" });
       }
     });
+
+    // get posts
+    app.get("/main-posts", async (req, res) => {
+      try {
+        const posts = await postsCollection.find().toArray();
+        res.status(200).json(posts);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+        res.status(500).json({ message: "Failed to fetch posts" });
+      }
+    });
+
 
     // ------------
     await client.db("admin").command({ ping: 1 });
