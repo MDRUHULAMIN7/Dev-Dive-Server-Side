@@ -99,6 +99,22 @@ async function run() {
       }
     });
 
+    app.get("/gitHubUsers/:username", async (req, res) => {
+      const username = req.params.username;
+      try {
+        const query = { name: username };
+        const user = await usersCollection.findOne(query);
+
+        if (user) {
+          res.send({ user });
+        } else {
+          res.status(404).send({ message: "User not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ message: "Error retrieving user", error });
+      }
+    });
+
 
 
 
