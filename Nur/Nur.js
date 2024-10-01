@@ -117,7 +117,11 @@ module.exports = (usersCollection, postsCollection) => {
   // LeaderBoard Posts
   router.get("/leaderBoardPosts", async (req, res) => {
     try {
-      const posts = await postsCollection.find().toArray();
+      const posts = await postsCollection
+        .find()
+        .sort({ likes: -1 })
+        .limit(5)
+        .toArray();
       res.status(200).json(posts);
     } catch (error) {
       console.error("Error fetching posts:", error);
