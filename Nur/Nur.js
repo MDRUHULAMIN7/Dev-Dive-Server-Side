@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-module.exports = (usersCollection) => {
+module.exports = (usersCollection, postsCollection) => {
   router.get("/users", async (req, res) => {
     const cursor = usersCollection.find();
     const result = await cursor.toArray();
@@ -111,6 +111,17 @@ module.exports = (usersCollection) => {
         message: "No changes made to the user login time",
         result,
       });
+    }
+  });
+
+  // LeaderBoard Posts
+  router.get("/leaderBoardPosts", async (req, res) => {
+    try {
+      const posts = await postsCollection.find().toArray();
+      res.status(200).json(posts);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      res.status(500).json({ message: "Failed to fetch posts" });
     }
   });
 
