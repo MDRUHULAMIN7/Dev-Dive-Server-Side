@@ -26,6 +26,7 @@ async function run() {
     // Database collection
     const database = client.db("DevDive");
     const usersCollection = database.collection("users");
+    const commentsCollection = database.collection("comments");
     const blogsCollection = database.collection("blogs");
     const postsCollection = database.collection("posts");
     const likesCollection = database.collection("likes");
@@ -116,6 +117,71 @@ async function run() {
         res.status(500).json({ message: "Failed to add post" });
       }
     });
+    app.post("/postComment", async (req, res) => {
+      try {
+        const {contentId,comment,userName,userImage,likeCount,disLikeCount,replyCount,parentId} = req.body;
+
+        // Insert the post into MongoDB
+        const result = await commentsCollection.insertOne({
+          contentId,
+          comment,
+          userName,
+          userImage,
+          likeCount,
+          disLikeCount,
+          replyCount,
+          parentId,
+          createdAt: new Date(), // Optional: To track when the post was created
+        });
+
+        res.status(200).send(result)
+      } catch (error) {
+        console.error("Error adding post:", error);
+        res.status(500).json({ message: "Failed to add post" });
+      }
+    });
+    app.post("/postReply", async (req, res) => {
+      try {
+        const {contentId,reply,userName,userImage,likeCount,disLikeCount,replyCount,parentId} = req.body;
+
+        // Insert the post into MongoDB
+        const result = await commentsCollection.insertOne({
+          contentId,
+          reply,
+          userName,
+          userImage,
+          likeCount,
+          disLikeCount,
+          replyCount,
+          parentId,
+          createdAt: new Date(), // Optional: To track when the post was created
+        });
+
+        res.status(200).send(result)
+      } catch (error) {
+        console.error("Error adding post:", error);
+        res.status(500).json({ message: "Failed to add post" });
+      }
+    });
+
+    app.get('/getComments/:id',async(req,res)=>{
+      const id= req.params.id;
+      // const query = { contentId: new ObjectId(id)};
+      // const query = { contentId: id};
+      const query = {
+        contentId: id,
+        parentId: null
+      };
+      const result = await commentsCollection.find(query).toArray();
+      res.send(result)
+    })
+    app.get('/getReplies/:id',async(req,res)=>{
+      const id= req.params.id;
+      // const query = { contentId: new ObjectId(id)};
+      const query = { parentId: id};
+      const result = await commentsCollection.find(query).toArray();
+      res.send(result)
+    })
 
     // get posts
     app.get("/main-posts", async (req, res) => {
