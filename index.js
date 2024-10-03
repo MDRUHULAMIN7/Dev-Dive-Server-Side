@@ -533,7 +533,7 @@ async function run() {
       }
     });
 
-    // ------------
+    
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
   } finally {
