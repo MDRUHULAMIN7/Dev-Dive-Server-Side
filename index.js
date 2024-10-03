@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { format } = require('date-fns');
+const { format } = require("date-fns");
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
@@ -32,12 +32,16 @@ async function run() {
     const likesCollection = database.collection("likes");
     const dislikesCollection = database.collection("dislikes");
     const followersCollection = database.collection("followers");
-    const chatbotquestionsCollection = database.collection("chatbotquestions")
+    const chatbotquestionsCollection = database.collection("chatbotquestions");
 
     // All Operations By Nur
-    // Import and use the separated route
-    const Nur = require("./Nur/Nur")(usersCollection);
-    app.use(Nur);
+    // Import Route
+    const SignModal = require("./Nur/SignModal")(usersCollection);
+    const LeaderBoard = require("./Nur/LeaderBoard")(postsCollection);
+
+    // Use Route
+    app.use(SignModal);
+    app.use(LeaderBoard);
 
     // End Of All Operations By Nur
 
@@ -46,42 +50,44 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
-    // get users by email 
+    // get users by email
     // app.get('/one-user',async(req,res)=>{
     //   const email = req.query.email;
 
     //   res.send(result)
     // })
 
-    app.get('/one-user', async (req, res) => {
+    app.get("/one-user", async (req, res) => {
       const email = req.query.email; // Get the email from the query parameter
-           const query={email:email}
+      const query = { email: email };
 
       try {
         // Query to find the users who follow the given user
         const followersQuery = { followingEmail: email };
-        const followers = await followersCollection.find(followersQuery).toArray();
-        const mainuser =await usersCollection.findOne(query)
-        
+        const followers = await followersCollection
+          .find(followersQuery)
+          .toArray();
+        const mainuser = await usersCollection.findOne(query);
+
         // Query to find the people the given user is following
         const followingQuery = { followerEmail: email };
-        const following = await followersCollection.find(followingQuery).toArray();
-    
+        const following = await followersCollection
+          .find(followingQuery)
+          .toArray();
+
         // Send the results including the count of followers and following
         res.send({
           mainuser,
-          followers,                    // List of people who follow the user
-          following,                    // List of people the user is following
+          followers, // List of people who follow the user
+          following, // List of people the user is following
           totalFollowers: followers.length, // Total number of followers
-          totalFollowing: following.length  // Total number of people the user is following
+          totalFollowing: following.length, // Total number of people the user is following
         });
       } catch (error) {
         console.error("Error fetching followers and following:", error);
         res.status(500).send({ message: "Internal server error" });
       }
     });
-    
-
 
     // update-user-role
     app.put(`/update-user-role/:email`, async (req, res) => {
@@ -112,12 +118,20 @@ async function run() {
       res.send(result);
     });
 
-
     //post
 
     app.post("/main-posts", async (req, res) => {
       try {
-        const { title, tags, body, link, images,userEmail,username,profilePicture, } = req.body;
+        const {
+          title,
+          tags,
+          body,
+          link,
+          images,
+          userEmail,
+          username,
+          profilePicture,
+        } = req.body;
 
         // Insert the post into MongoDB
         const result = await postsCollection.insertOne({
@@ -129,8 +143,8 @@ async function run() {
           userEmail,
           username,
           profilePicture,
-          likes : 0,
-          dislikes : 0,
+          likes: 0,
+          dislikes: 0,
           createdAt: new Date(), // Optional: To track when the post was created
         });
 
@@ -145,7 +159,16 @@ async function run() {
     });
     app.post("/postComment", async (req, res) => {
       try {
-        const {contentId,comment,userName,userImage,likeCount,disLikeCount,replyCount,parentId} = req.body;
+        const {
+          contentId,
+          comment,
+          userName,
+          userImage,
+          likeCount,
+          disLikeCount,
+          replyCount,
+          parentId,
+        } = req.body;
 
         // Insert the post into MongoDB
         const result = await commentsCollection.insertOne({
@@ -160,7 +183,7 @@ async function run() {
           createdAt: new Date(), // Optional: To track when the post was created
         });
 
-        res.status(200).send(result)
+        res.status(200).send(result);
       } catch (error) {
         console.error("Error adding post:", error);
         res.status(500).json({ message: "Failed to add post" });
@@ -168,7 +191,16 @@ async function run() {
     });
     app.post("/postReply", async (req, res) => {
       try {
-        const {contentId,reply,userName,userImage,likeCount,disLikeCount,replyCount,parentId} = req.body;
+        const {
+          contentId,
+          reply,
+          userName,
+          userImage,
+          likeCount,
+          disLikeCount,
+          replyCount,
+          parentId,
+        } = req.body;
 
         // Insert the post into MongoDB
         const result = await commentsCollection.insertOne({
@@ -183,31 +215,31 @@ async function run() {
           createdAt: new Date(), // Optional: To track when the post was created
         });
 
-        res.status(200).send(result)
+        res.status(200).send(result);
       } catch (error) {
         console.error("Error adding post:", error);
         res.status(500).json({ message: "Failed to add post" });
       }
     });
 
-    app.get('/getComments/:id',async(req,res)=>{
-      const id= req.params.id;
+    app.get("/getComments/:id", async (req, res) => {
+      const id = req.params.id;
       // const query = { contentId: new ObjectId(id)};
       // const query = { contentId: id};
       const query = {
         contentId: id,
-        parentId: null
+        parentId: null,
       };
       const result = await commentsCollection.find(query).toArray();
-      res.send(result)
-    })
-    app.get('/getReplies/:id',async(req,res)=>{
-      const id= req.params.id;
+      res.send(result);
+    });
+    app.get("/getReplies/:id", async (req, res) => {
+      const id = req.params.id;
       // const query = { contentId: new ObjectId(id)};
-      const query = { parentId: id};
+      const query = { parentId: id };
       const result = await commentsCollection.find(query).toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     // get posts
     app.get("/main-posts", async (req, res) => {
@@ -220,301 +252,286 @@ async function run() {
       }
     });
 
-// get posts
-    app.get('/get-posts',async(req,res)=>{
-      const result = await postsCollection.find().toArray()
-      res.send(result)
-    })
+    // get posts
+    app.get("/get-posts", async (req, res) => {
+      const result = await postsCollection.find().toArray();
+      res.send(result);
+    });
 
     // get likes
-    app.get('/get-likes',async(req,res)=>{
-      const result = await likesCollection.find().toArray()
-      res.send(result)
-    })
+    app.get("/get-likes", async (req, res) => {
+      const result = await likesCollection.find().toArray();
+      res.send(result);
+    });
     // get likes
-    app.get('/get-dislikes',async(req,res)=>{
-      const result = await dislikesCollection.find().toArray()
-      res.send(result)
-    })
+    app.get("/get-dislikes", async (req, res) => {
+      const result = await dislikesCollection.find().toArray();
+      res.send(result);
+    });
 
-  // post likes
-  // app.post('/like/:id',async(req,res)=>{
-  //   const{id} = req.params;
-  //   const user = req.body.newuser;
-  //   console.log(user);
-  //   console.log('from server',id);
-  //   const now = Date.now()
-  //   const formattedDateTime = format(now, 'EEEE, MMMM dd, yyyy, hh:mm a');
-  //   const query1={_id:new ObjectId(id)}
-  //   const query2={email:user.email};
-  //   const query3 = {postId : id}
-  //   const forLike = await postsCollection.findOne(query1)
-  //   const likesInfo={
-  //     postId:id,
-  //     ...user,
-  //     likeTime:formattedDateTime
-  //   }
-   
-  //   const updateDoc1={
-  //     $set:{likes:forLike.likes+1}
-  //   }
-  //   const updateDoc2={
-  //     $set:{likes:forLike.likes-1}
-  //   }
-  //   const result5 = await likesCollection.findOne(query3);
-  //   // res.send(result5)
+    // like
+    app.post("/like/:id", async (req, res) => {
+      try {
+        const { id } = req.params; // Post ID
+        const user = req.body.newuser; // User information from request body
 
-    
-  //   if(result5 && result5.email == user?.email){
-  //     const result3 = likesCollection.deleteOne(query2);
-  //     const result4 = await postsCollection.updateOne(query1,updateDoc2)
-  //     // return res.send({result3,result4}) 
-  //   }
-  //   const result1 = await postsCollection.updateOne(query1,updateDoc1)
-     
-  //   const result = await likesCollection.insertOne(likesInfo);
-  //   res.send({result,result1})
-  //   // res.send({id,user,userName})
-  // })
+        console.log("User:", user);
+        console.log("Post ID:", id);
 
-  // like
-  app.post('/like/:id', async (req, res) => {
-    try {
-      const { id } = req.params; // Post ID
-      const user = req.body.newuser; // User information from request body
-  
-      const now = Date.now();
-      const formattedDateTime = format(now, 'EEEE, MMMM dd, yyyy, hh:mm a');
-  
-      const query1 = { _id: new ObjectId(id) }; // Query to find the post by ID
-      const query3 = { postId: id, email: user.email }; // Query to check if the user liked this post
-  
-      const forLike = await postsCollection.findOne(query1); // Finding the post
-  
-      if (!forLike) {
-        return res.status(404).send({ message: 'Post not found', success: false });
-      }
-  
-      const likesInfo = {
-        postId: id,
-        ...user,
-        likeTime: formattedDateTime,
-      };
-  
-      const result5 = await likesCollection.findOne(query3); // Checking if the user already liked the post
-      const result6 = await dislikesCollection.findOne(query3); // Checking if the user already disliked the post
-  
-      if (result5) {
-        // User has already liked the post, so remove the like
-        await likesCollection.deleteOne(query3); // Remove like from likesCollection
-        await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count in postsCollection
-        return res.send({ message: 'Like removed', success: true });
-      }
-  
-      if (result6) {
-        // If user disliked before, remove the dislike and add a like
-        await dislikesCollection.deleteOne(query3);
-        await postsCollection.updateOne(query1, { $inc: { dislikes: -1, likes: 1 } });
-        const result = await likesCollection.insertOne(likesInfo); // Add like to likesCollection
-        return res.send({ result, message: 'Like added and dislike removed', success: true });
-      }
-  
-      // If the user has not liked or disliked the post yet
-      await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count in postsCollection
-      const result = await likesCollection.insertOne(likesInfo); // Add like to likesCollection
-  
-      res.send({ result, message: 'Like added', success: true });
-  
-    } catch (error) {
-      console.error(error);
-      res.status(500).send({ message: 'An error occurred', success: false });
-    }
-  });
-  
-  // Dislike route
-  app.post('/dislike/:id', async (req, res) => {
-    try {
-      const { id } = req.params; // Post ID
-      const user = req.body.newuser; // User information from request body
-  
-   
-  
-      const now = Date.now();
-      const formattedDateTime = format(now, 'EEEE, MMMM dd, yyyy, hh:mm a');
-  
-      const query1 = { _id: new ObjectId(id) }; // Query to find the post by ID
-      const query3 = { postId: id, email: user.email }; // Query to check if the user disliked this post
-  
-      const forLike = await postsCollection.findOne(query1); // Finding the post
-  
-      if (!forLike) {
-        return res.status(404).send({ message: 'Post not found', success: false });
-      }
-  
-      const dislikesInfo = {
-        postId: id,
-        ...user,
-        dislikeTime: formattedDateTime,
-      };
-  
-      const result5 = await dislikesCollection.findOne(query3); // Checking if the user already disliked the post
-      const result6 = await likesCollection.findOne(query3); // Checking if the user liked the post
-  
-      if (result5) {
-        // User has already disliked the post, so remove the dislike
-        await dislikesCollection.deleteOne(query3); // Remove dislike from dislikesCollection
-        await postsCollection.updateOne(query1, { $inc: { dislikes: -1 } }); // Decrease dislike count in postsCollection
-        return res.send({ message: 'Dislike removed', success: true });
-      }
-  
-      if (result6) {
-        // If user liked before, remove the like and add a dislike
-        await likesCollection.deleteOne(query3);
-        await postsCollection.updateOne(query1, { $inc: { likes: -1, dislikes: 1 } });
-        const result = await dislikesCollection.insertOne(dislikesInfo);
-        return res.send({ result, message: 'Dislike added and like removed', success: true });
-      }
-  
-      // If the user has not liked or disliked the post yet
-      await postsCollection.updateOne(query1, { $inc: { dislikes: 1 } }); // Increase dislike count in postsCollection
-      const result = await dislikesCollection.insertOne(dislikesInfo); // Add dislike to dislikesCollection
-  
-      res.send({ result, message: 'Dislike added', success: true });
-  
-    } catch (error) {
-      console.error(error);
-      res.status(500).send({ message: 'An error occurred', success: false });
-    }
-  });
-  
-  // follow / unfollow
+        const now = Date.now();
+        const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
 
-  app.post('/follow/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const user = req.body.newuser;
-  
-      // Prepare follow time
-      const now = Date.now();
-      const formattedDateTime = format(now, 'EEEE, MMMM dd, yyyy, hh:mm a');
-  
-      // Fetch the post details by postId
-      const post = await postsCollection.findOne({ _id: new ObjectId(id) });
-  
-      if (!post) {
-        return res.status(404).send({ message: "Post not found" });
-      }
-  
-      // Check if the user is already following the post's author
-      const queryForExistingFollow = { postId: id, followerEmail: user.email }; 
-      const existingFollow = await followersCollection.findOne(queryForExistingFollow);
-  
-      const queryForPostOwner = { email: post.userEmail }; // Find the post owner's details
-  
-      if (existingFollow) {
-        // Unfollow logic: delete the follow record and decrement follower count
-        await Promise.all([
-          followersCollection.deleteOne(queryForExistingFollow),
-          usersCollection.updateOne(queryForPostOwner, { $inc: { followers: -1 } }) // Correct field name
-        ]);
-        return res.status(200).send({ message: 'Unfollowed successfully' });
-      } else {
-        // Follow logic: insert a new follower record and increment follower count
-        const followInfo = {
-          following: post.username,
-          followingEmail: post.userEmail,
-          followingPhoto: post.profilePicture,
+        const query1 = { _id: new ObjectId(id) }; // Query to find the post by ID
+        const query3 = { postId: id, email: user.email }; // Query to check if the user liked this post
+
+        const forLike = await postsCollection.findOne(query1); // Finding the post
+
+        if (!forLike) {
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
+        }
+
+        const likesInfo = {
           postId: id,
-          followerName: user.name,
-          followerEmail: user.email,
-          followerPhoto: user.photo,
-          followTime: formattedDateTime,
+          ...user,
+          likeTime: formattedDateTime,
         };
-        
-        await followersCollection.insertOne(followInfo);
-        await usersCollection.updateOne(queryForPostOwner, { $inc: { followers: 1 } }); // Correct field name
-        return res.status(200).send({ message: 'Followed successfully' });
+
+        const result5 = await likesCollection.findOne(query3); // Checking if the user already liked the post
+        const result6 = await dislikesCollection.findOne(query3); // Checking if the user already disliked the post
+
+        if (result5) {
+          // User has already liked the post, so remove the like
+          await likesCollection.deleteOne(query3); // Remove like from likesCollection
+          await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count in postsCollection
+          return res.send({ message: "Like removed", success: true });
+        }
+
+        if (result6) {
+          // If user disliked before, remove the dislike and add a like
+          await dislikesCollection.deleteOne(query3);
+          await postsCollection.updateOne(query1, {
+            $inc: { dislikes: -1, likes: 1 },
+          });
+          const result = await likesCollection.insertOne(likesInfo); // Add like to likesCollection
+          return res.send({
+            result,
+            message: "Like added and dislike removed",
+            success: true,
+          });
+        }
+
+        // If the user has not liked or disliked the post yet
+        await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count in postsCollection
+        const result = await likesCollection.insertOne(likesInfo); // Add like to likesCollection
+
+        res.send({ result, message: "Like added", success: true });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "An error occurred", success: false });
       }
-    } catch (error) {
-      console.error('Error in /follow/:id:', error);
-      res.status(500).send({ message: 'Internal Server Error', error: error.message });
-    }
-  });
-  
-  
-  // get followers
+    });
 
-  app.get('/get-followers',async(req,res)=>{
-    const result = await followersCollection.find().toArray()
-    res.send(result)
-  })
+    // Dislike route
+    app.post("/dislike/:id", async (req, res) => {
+      try {
+        const { id } = req.params; // Post ID
+        const user = req.body.newuser; // User information from request body
 
-  // followers in a list 
+        const now = Date.now();
+        const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
 
-  app.get('/followers/all', async (req, res) => {
-    try {
-        const followersList = await followersCollection.aggregate([
+        const query1 = { _id: new ObjectId(id) }; // Query to find the post by ID
+        const query3 = { postId: id, email: user.email }; // Query to check if the user disliked this post
+
+        const forLike = await postsCollection.findOne(query1); // Finding the post
+
+        if (!forLike) {
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
+        }
+
+        const dislikesInfo = {
+          postId: id,
+          ...user,
+          dislikeTime: formattedDateTime,
+        };
+
+        const result5 = await dislikesCollection.findOne(query3); // Checking if the user already disliked the post
+        const result6 = await likesCollection.findOne(query3); // Checking if the user liked the post
+
+        if (result5) {
+          // User has already disliked the post, so remove the dislike
+          await dislikesCollection.deleteOne(query3); // Remove dislike from dislikesCollection
+          await postsCollection.updateOne(query1, { $inc: { dislikes: -1 } }); // Decrease dislike count in postsCollection
+          return res.send({ message: "Dislike removed", success: true });
+        }
+
+        if (result6) {
+          // If user liked before, remove the like and add a dislike
+          await likesCollection.deleteOne(query3);
+          await postsCollection.updateOne(query1, {
+            $inc: { likes: -1, dislikes: 1 },
+          });
+          const result = await dislikesCollection.insertOne(dislikesInfo);
+          return res.send({
+            result,
+            message: "Dislike added and like removed",
+            success: true,
+          });
+        }
+
+        // If the user has not liked or disliked the post yet
+        await postsCollection.updateOne(query1, { $inc: { dislikes: 1 } }); // Increase dislike count in postsCollection
+        const result = await dislikesCollection.insertOne(dislikesInfo); // Add dislike to dislikesCollection
+
+        res.send({ result, message: "Dislike added", success: true });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "An error occurred", success: false });
+      }
+    });
+
+    // follow / unfollow
+
+    app.post("/follow/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const user = req.body.newuser;
+
+        // Prepare follow time
+        const now = Date.now();
+        const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
+
+        // Fetch the post details by postId
+        const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!post) {
+          return res.status(404).send({ message: "Post not found" });
+        }
+
+        // Check if the user is already following the post's author
+        const queryForExistingFollow = {
+          postId: id,
+          followerEmail: user.email,
+        };
+        const existingFollow = await followersCollection.findOne(
+          queryForExistingFollow
+        );
+
+        const queryForPostOwner = { email: post.userEmail }; // Find the post owner's details
+
+        if (existingFollow) {
+          // Unfollow logic: delete the follow record and decrement follower count
+          await Promise.all([
+            followersCollection.deleteOne(queryForExistingFollow),
+            usersCollection.updateOne(queryForPostOwner, {
+              $inc: { followers: -1 },
+            }), // Correct field name
+          ]);
+          return res.status(200).send({ message: "Unfollowed successfully" });
+        } else {
+          // Follow logic: insert a new follower record and increment follower count
+          const followInfo = {
+            following: post.username,
+            followingEmail: post.userEmail,
+            followingPhoto: post.profilePicture,
+            postId: id,
+            followerName: user.name,
+            followerEmail: user.email,
+            followerPhoto: user.photo,
+            followTime: formattedDateTime,
+          };
+
+          await followersCollection.insertOne(followInfo);
+          await usersCollection.updateOne(queryForPostOwner, {
+            $inc: { followers: 1 },
+          }); // Correct field name
+          return res.status(200).send({ message: "Followed successfully" });
+        }
+      } catch (error) {
+        console.error("Error in /follow/:id:", error);
+        res
+          .status(500)
+          .send({ message: "Internal Server Error", error: error.message });
+      }
+    });
+
+    // get followers
+
+    app.get("/get-followers", async (req, res) => {
+      const result = await followersCollection.find().toArray();
+      res.send(result);
+    });
+
+    // followers in a list
+
+    app.get("/followers/all", async (req, res) => {
+      try {
+        const followersList = await followersCollection
+          .aggregate([
             {
-                $group: {
-                    _id: "$following",
-                    followers: {
-                        $push: {
-                            postBy: "$postBy",
-                            name: "$name",
-                            email: "$email",
-                            photo: "$photo",
-                            followTime: "$followTime"
-                        }
-                    }
-                }
+              $group: {
+                _id: "$following",
+                followers: {
+                  $push: {
+                    postBy: "$postBy",
+                    name: "$name",
+                    email: "$email",
+                    photo: "$photo",
+                    followTime: "$followTime",
+                  },
+                },
+              },
             },
             {
-                $project: {
-                    _id: 0,
-                    user: "$_id",
-                    followers: 1
-                }
-            }
-        ]).toArray(); 
-        res.send(followersList)
-
-    } catch (error) {
-        res.send({ error: 'Server error occurred' });
-    }
-});
-
-// chatbot ans get
-
-async function getAnswerFromDB(userQuestion) {
- 
-
-  const result = await chatbotquestionsCollection.findOne({ question: { $regex: new RegExp(userQuestion, "i") } }); // Case-insensitive search
-  return result ? result.answer : null; // Return answer if found
-}
-
-// API route to fetch answer based on user question
-app.get("/api/getAnswer", async (req, res) => {
-  const userQuestion = req.query.question; // Get the question from the query parameters
-
-  if (!userQuestion) {
-      return res.status(400).json({ message: "Question is required!" }); // Return an error if no question is provided
-  }
-
-  try {
-      const answer = await getAnswerFromDB(userQuestion); // Fetch the answer from the database
-      if (answer) {
-          res.json({ answer }); // Return the answer if found
-      } else {
-          res.status(404).json({ message: "Answer not found for that question." }); // Return a not found error
+              $project: {
+                _id: 0,
+                user: "$_id",
+                followers: 1,
+              },
+            },
+          ])
+          .toArray();
+        res.send(followersList);
+      } catch (error) {
+        res.send({ error: "Server error occurred" });
       }
-  } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Internal server error." }); // Return a server error if something goes wrong
-  }
-});
+    });
 
+    // chatbot ans get
 
+    async function getAnswerFromDB(userQuestion) {
+      const result = await chatbotquestionsCollection.findOne({
+        question: { $regex: new RegExp(userQuestion, "i") },
+      }); // Case-insensitive search
+      return result ? result.answer : null; // Return answer if found
+    }
 
+    // API route to fetch answer based on user question
+    app.get("/api/getAnswer", async (req, res) => {
+      const userQuestion = req.query.question; // Get the question from the query parameters
+
+      if (!userQuestion) {
+        return res.status(400).json({ message: "Question is required!" }); // Return an error if no question is provided
+      }
+
+      try {
+        const answer = await getAnswerFromDB(userQuestion); // Fetch the answer from the database
+        if (answer) {
+          res.json({ answer }); // Return the answer if found
+        } else {
+          res
+            .status(404)
+            .json({ message: "Answer not found for that question." }); // Return a not found error
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error." }); // Return a server error if something goes wrong
+      }
+    });
 
     // ------------
     await client.db("admin").command({ ping: 1 });
