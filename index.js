@@ -33,8 +33,10 @@ async function run() {
 
     // All Operations By Nur
     // Import and use separated route
-    const SignModal = require("./Nur/SignModal")(usersCollection, postsCollection);
+    const SignModal = require("./Nur/SignModal")(usersCollection);
+    const LeaderBoard = require("./Nur/Leaderboard")(postsCollection);
     app.use(SignModal);
+    app.use(LeaderBoard);
 
     // End Of All Operations By Nur
 
