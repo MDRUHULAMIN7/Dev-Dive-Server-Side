@@ -30,6 +30,8 @@ async function run() {
     const postsCollection = database.collection("posts");
     const likesCollection = database.collection("likes");
     const dislikesCollection = database.collection("dislikes");
+    const followersCollection = database.collection("followers");
+    const chatbotquestionsCollection = database.collection("chatbotquestions")
 
     // All Operations By Nur
     // Import and use the separated route
@@ -43,6 +45,42 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
+    // get users by email 
+    // app.get('/one-user',async(req,res)=>{
+    //   const email = req.query.email;
+
+    //   res.send(result)
+    // })
+
+    app.get('/one-user', async (req, res) => {
+      const email = req.query.email; // Get the email from the query parameter
+           const query={email:email}
+
+      try {
+        // Query to find the users who follow the given user
+        const followersQuery = { followingEmail: email };
+        const followers = await followersCollection.find(followersQuery).toArray();
+        const mainuser =await usersCollection.findOne(query)
+        
+        // Query to find the people the given user is following
+        const followingQuery = { followerEmail: email };
+        const following = await followersCollection.find(followingQuery).toArray();
+    
+        // Send the results including the count of followers and following
+        res.send({
+          mainuser,
+          followers,                    // List of people who follow the user
+          following,                    // List of people the user is following
+          totalFollowers: followers.length, // Total number of followers
+          totalFollowing: following.length  // Total number of people the user is following
+        });
+      } catch (error) {
+        console.error("Error fetching followers and following:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+    
+
 
     // update-user-role
     app.put(`/update-user-role/:email`, async (req, res) => {
@@ -179,9 +217,6 @@ async function run() {
       const { id } = req.params; // Post ID
       const user = req.body.newuser; // User information from request body
   
-      console.log('User:', user);
-      console.log('Post ID:', id);
-  
       const now = Date.now();
       const formattedDateTime = format(now, 'EEEE, MMMM dd, yyyy, hh:mm a');
   
@@ -236,8 +271,7 @@ async function run() {
       const { id } = req.params; // Post ID
       const user = req.body.newuser; // User information from request body
   
-      console.log('User:', user);
-      console.log('Post ID:', id);
+   
   
       const now = Date.now();
       const formattedDateTime = format(now, 'EEEE, MMMM dd, yyyy, hh:mm a');
@@ -287,7 +321,134 @@ async function run() {
     }
   });
   
+  // follow / unfollow
+
+  app.post('/follow/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.body.newuser;
   
+      // Prepare follow time
+      const now = Date.now();
+      const formattedDateTime = format(now, 'EEEE, MMMM dd, yyyy, hh:mm a');
+  
+      // Fetch the post details by postId
+      const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+  
+      if (!post) {
+        return res.status(404).send({ message: "Post not found" });
+      }
+  
+      // Check if the user is already following the post's author
+      const queryForExistingFollow = { postId: id, followerEmail: user.email }; 
+      const existingFollow = await followersCollection.findOne(queryForExistingFollow);
+  
+      const queryForPostOwner = { email: post.userEmail }; // Find the post owner's details
+  
+      if (existingFollow) {
+        // Unfollow logic: delete the follow record and decrement follower count
+        await Promise.all([
+          followersCollection.deleteOne(queryForExistingFollow),
+          usersCollection.updateOne(queryForPostOwner, { $inc: { followers: -1 } }) // Correct field name
+        ]);
+        return res.status(200).send({ message: 'Unfollowed successfully' });
+      } else {
+        // Follow logic: insert a new follower record and increment follower count
+        const followInfo = {
+          following: post.username,
+          followingEmail: post.userEmail,
+          followingPhoto: post.profilePicture,
+          postId: id,
+          followerName: user.name,
+          followerEmail: user.email,
+          followerPhoto: user.photo,
+          followTime: formattedDateTime,
+        };
+        
+        await followersCollection.insertOne(followInfo);
+        await usersCollection.updateOne(queryForPostOwner, { $inc: { followers: 1 } }); // Correct field name
+        return res.status(200).send({ message: 'Followed successfully' });
+      }
+    } catch (error) {
+      console.error('Error in /follow/:id:', error);
+      res.status(500).send({ message: 'Internal Server Error', error: error.message });
+    }
+  });
+  
+  
+  // get followers
+
+  app.get('/get-followers',async(req,res)=>{
+    const result = await followersCollection.find().toArray()
+    res.send(result)
+  })
+
+  // followers in a list 
+
+  app.get('/followers/all', async (req, res) => {
+    try {
+        const followersList = await followersCollection.aggregate([
+            {
+                $group: {
+                    _id: "$following",
+                    followers: {
+                        $push: {
+                            postBy: "$postBy",
+                            name: "$name",
+                            email: "$email",
+                            photo: "$photo",
+                            followTime: "$followTime"
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    user: "$_id",
+                    followers: 1
+                }
+            }
+        ]).toArray(); 
+        res.send(followersList)
+
+    } catch (error) {
+        res.send({ error: 'Server error occurred' });
+    }
+});
+
+// chatbot ans get
+
+async function getAnswerFromDB(userQuestion) {
+ 
+
+  const result = await chatbotquestionsCollection.findOne({ question: { $regex: new RegExp(userQuestion, "i") } }); // Case-insensitive search
+  return result ? result.answer : null; // Return answer if found
+}
+
+// API route to fetch answer based on user question
+app.get("/api/getAnswer", async (req, res) => {
+  const userQuestion = req.query.question; // Get the question from the query parameters
+
+  if (!userQuestion) {
+      return res.status(400).json({ message: "Question is required!" }); // Return an error if no question is provided
+  }
+
+  try {
+      const answer = await getAnswerFromDB(userQuestion); // Fetch the answer from the database
+      if (answer) {
+          res.json({ answer }); // Return the answer if found
+      } else {
+          res.status(404).json({ message: "Answer not found for that question." }); // Return a not found error
+      }
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error." }); // Return a server error if something goes wrong
+  }
+});
+
+
+
 
     // ------------
     await client.db("admin").command({ ping: 1 });
