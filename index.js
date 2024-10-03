@@ -32,9 +32,11 @@ async function run() {
     const dislikesCollection = database.collection("dislikes");
 
     // All Operations By Nur
-    // Import and use separated route
+    // Import Route
     const SignModal = require("./Nur/SignModal")(usersCollection);
-    const LeaderBoard = require("./Nur/Leaderboard")(postsCollection);
+    const LeaderBoard = require("./Nur/LeaderBoard")(postsCollection);
+
+    // Use Route
     app.use(SignModal);
     app.use(LeaderBoard);
 
