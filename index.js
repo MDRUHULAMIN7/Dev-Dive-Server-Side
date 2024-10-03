@@ -8,7 +8,18 @@ const port = process.env.PORT || 5000;
 require("dotenv").config();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5175",
+      "http://localhost:5176",
+      "https://devdive1.netlify.app/",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // mongodb
@@ -533,6 +544,30 @@ async function run() {
       }
     });
 
+    // search 
+
+    app.get('/posts/search/post', async (req, res) => {
+      const search = req.query.search;
+  
+      if (!search) {
+          return res.status(400).send({ error: 'Search query is required' });
+      }
+  
+      // console.log(`Search query: ${search}`);
+  
+      const query = { title: { $regex: search, $options: 'i' } };
+  
+      try {
+          const result = await postsCollection.find(query).toArray();
+          res.send(result);
+      } catch (error) {
+          console.error('Error retrieving posts:', error);
+          res.status(500).send({ error: 'An error occurred while searching for posts' });
+      }
+  });
+  
+
+
     
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
@@ -544,8 +579,9 @@ run().catch(console.dir);
 
 // mongodb
 app.get("/", (req, res) => {
-  res.send("DevDive is  running");
+  res.send("DevDive is  on the way");
 });
+
 
 app.listen(port, () => {
   console.log(`DevDive is running on:${port}`);
