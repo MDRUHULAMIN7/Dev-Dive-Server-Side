@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-module.exports = (postsCollection) => {
+module.exports = (postsCollection, likesCollection) => {
   router.get("/leaderBoardPosts", async (req, res) => {
     try {
       const posts = await postsCollection
@@ -13,6 +13,29 @@ module.exports = (postsCollection) => {
     } catch (error) {
       console.error("Error fetching posts:", error);
       res.status(500).json({ message: "Failed to fetch posts" });
+    }
+  });
+
+  router.get("/leaderBoardLikes", async (req, res) => {
+    try {
+      const result = await likesCollection
+        .aggregate([
+          {
+            $group: {
+              _id: "$email",
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $sort: { count: -1 },
+          },
+        ])
+        .toArray();
+
+      res.status(200).send(result);
+    } catch (error) {
+      console.error("Error fetching leaderBoard likes:", error);
+      res.status(500).send({ message: "Failed to fetch leaderBoard likes" });
     }
   });
 
