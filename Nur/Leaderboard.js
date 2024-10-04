@@ -24,6 +24,7 @@ module.exports = (postsCollection, likesCollection) => {
             $group: {
               _id: "$email",
               count: { $sum: 1 },
+              name: { $first: "$name" },
             },
           },
           {
