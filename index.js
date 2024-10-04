@@ -8,7 +8,17 @@ const port = process.env.PORT || 5000;
 require("dotenv").config();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "https://devdive1.netlify.app/",
+
+    
+  ]
+}))
 app.use(express.json());
 
 // mongodb
@@ -272,9 +282,8 @@ async function run() {
     // like
     app.post("/like/:id", async (req, res) => {
       try {
-        const { id } = req.params; // Post ID
-        const user = req.body.newuser; // User information from request body
-
+        const { id } = req.params; 
+        const user = req.body.newuser; 
         console.log("User:", user);
         console.log("Post ID:", id);
 
