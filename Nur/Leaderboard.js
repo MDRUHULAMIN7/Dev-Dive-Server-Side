@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-module.exports = (postsCollection, likesCollection) => {
+module.exports = (postsCollection, likesCollection, commentsCollection) => {
   router.get("/leaderBoardPosts", async (req, res) => {
     try {
       const posts = await postsCollection
@@ -40,6 +40,32 @@ module.exports = (postsCollection, likesCollection) => {
     } catch (error) {
       console.error("Error fetching leaderBoard likes:", error);
       res.status(500).send({ message: "Failed to fetch leaderBoard likes" });
+    }
+  });
+
+  router.get("/leaderBoardComments", async (req, res) => {
+    try {
+      const result = await commentsCollection
+        .aggregate([
+          {
+            $group: {
+              _id: "$userName",
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $sort: { count: -1 },
+          },
+          {
+            $limit: 5,
+          },
+        ])
+        .toArray();
+
+      res.status(200).send(result);
+    } catch (error) {
+      console.error("Error fetching leaderBoard comments:", error);
+      res.status(500).send({ message: "Failed to fetch leaderBoard comments" });
     }
   });
 

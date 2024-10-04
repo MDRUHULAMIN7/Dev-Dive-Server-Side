@@ -50,7 +50,8 @@ async function run() {
     const SignModal = require("./Nur/SignModal")(usersCollection);
     const LeaderBoard = require("./Nur/LeaderBoard")(
       postsCollection,
-      likesCollection
+      likesCollection,
+      commentsCollection
     );
 
     // Use Route
