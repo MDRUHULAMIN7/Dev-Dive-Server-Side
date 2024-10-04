@@ -30,6 +30,9 @@ module.exports = (postsCollection, likesCollection) => {
           {
             $sort: { count: -1 },
           },
+          {
+            $limit: 5,
+          },
         ])
         .toArray();
 
