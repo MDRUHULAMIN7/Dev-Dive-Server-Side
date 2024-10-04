@@ -4,15 +4,12 @@ const router = express.Router();
 module.exports = (postsCollection, likesCollection, commentsCollection) => {
   router.get("/leaderBoardPosts", async (req, res) => {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = 5;
-      const skip = (page - 1) * limit;
-      const posts = await postsCollection
-        .find()
-        .sort({ likes: -1 })
-        .skip(skip)
-        .limit(5)
-        .toArray();
+      const { loadAllPosts } = req.query;
+      let postsQuery = postsCollection.find().sort({ likes: -1 });
+      if (loadAllPosts !== "true") {
+        postsQuery = postsQuery.limit(5);
+      }
+      const posts = await postsQuery.toArray();
       res.status(200).json(posts);
     } catch (error) {
       console.error("Error fetching posts:", error);
