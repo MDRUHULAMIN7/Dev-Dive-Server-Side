@@ -4,9 +4,13 @@ const router = express.Router();
 module.exports = (postsCollection, likesCollection, commentsCollection) => {
   router.get("/leaderBoardPosts", async (req, res) => {
     try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = 5;
+      const skip = (page - 1) * limit;
       const posts = await postsCollection
         .find()
         .sort({ likes: -1 })
+        .skip(skip)
         .limit(5)
         .toArray();
       res.status(200).json(posts);
