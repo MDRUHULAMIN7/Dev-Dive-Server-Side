@@ -290,6 +290,15 @@ async function run() {
       res.send(result);
     });
 
+    // get Comments
+    app.get("/getComments", async (req, res) => {
+      // const query = {
+      //   parentId: null,
+      // };
+      const result = await commentsCollection.find().toArray();
+      res.send(result);
+    });
+
     // like
     app.post("/like/:id", async (req, res) => {
       try {
