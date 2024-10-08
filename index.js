@@ -50,7 +50,11 @@ async function run() {
     // All Operations By Nur
     // Import Route
     const SignModal = require("./Nur/SignModal")(usersCollection);
-    const LeaderBoard = require("./Nur/LeaderBoard")(postsCollection);
+    const LeaderBoard = require("./Nur/LeaderBoard")(
+      postsCollection,
+      likesCollection,
+      commentsCollection
+    );
 
     // Use Route
     app.use(SignModal);
@@ -708,6 +712,30 @@ async function run() {
 
 
     
+    // search
+
+    app.get("/posts/search/post", async (req, res) => {
+      const search = req.query.search;
+
+      if (!search) {
+        return res.status(400).send({ error: "Search query is required" });
+      }
+
+      // console.log(`Search query: ${search}`);
+
+      const query = { title: { $regex: search, $options: "i" } };
+
+      try {
+        const result = await postsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error retrieving posts:", error);
+        res
+          .status(500)
+          .send({ error: "An error occurred while searching for posts" });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
   } finally {
