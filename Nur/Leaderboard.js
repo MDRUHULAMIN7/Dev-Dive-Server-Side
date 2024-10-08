@@ -21,7 +21,7 @@ module.exports = (postsCollection, likesCollection, commentsCollection) => {
     try {
       const { loadAllLikes } = req.query;
       let likesQuery = likesCollection;
-      if (loadAllLikes !== "true") {
+      if (loadAllLikes === "true") {
         likesQuery = await likesQuery
           .aggregate([
             {
@@ -38,7 +38,7 @@ module.exports = (postsCollection, likesCollection, commentsCollection) => {
           .toArray();
       }
 
-      if (loadAllLikes === "true") {
+      if (loadAllLikes !== "true") {
         likesQuery = await likesQuery
           .aggregate([
             {
