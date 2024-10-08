@@ -8,6 +8,7 @@ const port = process.env.PORT || 5000;
 require("dotenv").config();
 
 // Middleware
+app.use(cors());
 app.use(
   cors({
     origin: [
@@ -291,6 +292,15 @@ async function run() {
     });
     app.get("/getCommentDislikes", async (req, res) => {
       const result = await commentDislikesCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get All Comments
+    app.get("/getComments", async (req, res) => {
+      // const query = {
+      //   parentId: null,
+      // };
+      const result = await commentsCollection.find().toArray();
       res.send(result);
     });
 
