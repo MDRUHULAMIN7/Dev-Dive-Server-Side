@@ -291,7 +291,7 @@ async function run() {
       res.send(result);
     });
 
-    // get Comments
+    // get All Comments
     app.get("/getComments", async (req, res) => {
       // const query = {
       //   parentId: null,
