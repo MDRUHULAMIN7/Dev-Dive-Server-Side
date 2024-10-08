@@ -3,7 +3,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { format } = require("date-fns");
 const app = express();
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId, CURSOR_FLAGS } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
@@ -307,9 +307,8 @@ async function run() {
     // like
     app.post("/like/:id", async (req, res) => {
       try {
-        const { id } = req.params; // Post ID
-        const user = req.body.newuser; // User information from request body
-
+        const { id } = req.params;
+        const user = req.body.newuser;
         console.log("User:", user);
         console.log("Post ID:", id);
 
@@ -487,7 +486,7 @@ async function run() {
         res.send({ result, message: "Dislike added", success: true });
       } catch (error) {
         console.error(error);
-        res.status(500).send({ message: "An error occurred", success: false });
+        res.status(500).send({ message: "An error occurreds", success: false });
       }
     });
     // Dislike route
@@ -745,6 +744,27 @@ async function run() {
           .send({ error: "An error occurred while searching for posts" });
       }
     });
+
+
+    // update user-info 
+
+    app.put("/users-update/:email", async (req, res) => {
+      const { email } = req.params;
+      const  updatedUSerInfo = req.body;
+
+    const   updateDoc ={
+       $set: {
+         name: updatedUSerInfo.name,
+        photoUrl: updatedUSerInfo.photoUrl,
+        coverPhoto: updatedUSerInfo.coverPhoto,
+       },
+     };
+    
+ const query = {email:email}
+ const result = await usersCollection.updateOne(query,updateDoc)
+ res.send(result)
+
+       } )
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
