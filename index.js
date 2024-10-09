@@ -3,25 +3,46 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { format } = require("date-fns");
 const app = express();
-const { MongoClient, ServerApiVersion, ObjectId, CURSOR_FLAGS } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
 // Middleware
-app.use(cors());
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://localhost:5176",
-      "https://devdive1.netlify.app/",
-    ],
-    credentials: true,
-  })
-);
+// app.use(cors());
+
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:5173",
+//       "http://localhost:5174",
+//       "http://localhost:5175",
+//       "http://localhost:5176",
+//       "https://devdive1.netlify.app/",
+//     ],
+//     credentials: true,
+//     optionSuccessStatus: 200,
+//   })
+// );
+const corsOptions = {
+  origin: [ "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "https://devdive1.netlify.app/",],
+  credentials: true,
+  optionSuccessStatus: 200,
+}
+app.use(cors(corsOptions))
 app.use(express.json());
+
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' https://vercel.live; style-src 'self' 'unsafe-inline';"
+  );
+  next();
+});
 
 // mongodb
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -767,6 +788,16 @@ async function run() {
  res.send(result)
 
        } )
+
+      //  delete user-post 
+
+   app.delete('/user-delete-post/:id', async(req, res) => {
+    const { id } = req.params;
+    const query = { _id: new ObjectId(id) };
+    const result =await postsCollection.deleteOne(query);
+    res.send(result);
+      
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
