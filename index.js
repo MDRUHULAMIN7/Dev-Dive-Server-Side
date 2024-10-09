@@ -186,6 +186,7 @@ async function run() {
           poll,
           likes: 0,
           dislikes: 0,
+          comments: 0,
           createdAt: new Date(), // Optional: To track when the post was created
         });
 
@@ -223,11 +224,24 @@ async function run() {
           parentId,
           createdAt: new Date(), // Optional: To track when the post was created
         });
+        const query1 = { _id: new ObjectId(contentId) };
+        const findComment = await postsCollection.findOne(query1); // Finding the post
 
+        if (!findComment) {
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
+        }
+        const updateComment= await postsCollection.updateOne(query1, { $inc: { comments: 1 } });
+        if (!updateComment) {
+          return res
+            .status(404)
+            .send({ message: "commentCount was not updated", success: false });
+        }
         res.status(200).send(result);
       } catch (error) {
-        console.error("Error adding post:", error);
-        res.status(500).json({ message: "Failed to add post" });
+        console.error("Error adding comment:", error);
+        res.status(500).json({ message: "Failed to add comment" });
       }
     });
     app.post("/postReply", async (req, res) => {
