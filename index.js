@@ -170,6 +170,7 @@ async function run() {
           userEmail,
           username,
           profilePicture,
+          poll,
         } = req.body;
 
         // Insert the post into MongoDB
@@ -182,6 +183,7 @@ async function run() {
           userEmail,
           username,
           profilePicture,
+          poll,
           likes: 0,
           dislikes: 0,
           createdAt: new Date(), // Optional: To track when the post was created
