@@ -3,25 +3,46 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { format } = require("date-fns");
 const app = express();
-const { MongoClient, ServerApiVersion, ObjectId, CURSOR_FLAGS } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
 // Middleware
-app.use(cors());
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://localhost:5176",
-      "https://devdive1.netlify.app/",
-    ],
-    credentials: true,
-  })
-);
+// app.use(cors());
+
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:5173",
+//       "http://localhost:5174",
+//       "http://localhost:5175",
+//       "http://localhost:5176",
+//       "https://devdive1.netlify.app/",
+//     ],
+//     credentials: true,
+//     optionSuccessStatus: 200,
+//   })
+// );
+const corsOptions = {
+  origin: [ "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "https://devdive1.netlify.app/",],
+  credentials: true,
+  optionSuccessStatus: 200,
+}
+app.use(cors(corsOptions))
 app.use(express.json());
+
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' https://vercel.live; style-src 'self' 'unsafe-inline';"
+  );
+  next();
+});
 
 // mongodb
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -149,6 +170,7 @@ async function run() {
           userEmail,
           username,
           profilePicture,
+          poll,
         } = req.body;
 
         // Insert the post into MongoDB
@@ -161,8 +183,10 @@ async function run() {
           userEmail,
           username,
           profilePicture,
+          poll,
           likes: 0,
           dislikes: 0,
+          comments: 0,
           createdAt: new Date(), // Optional: To track when the post was created
         });
 
@@ -200,11 +224,24 @@ async function run() {
           parentId,
           createdAt: new Date(), // Optional: To track when the post was created
         });
+        const query1 = { _id: new ObjectId(contentId) };
+        const findComment = await postsCollection.findOne(query1); // Finding the post
 
+        if (!findComment) {
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
+        }
+        const updateComment= await postsCollection.updateOne(query1, { $inc: { comments: 1 } });
+        if (!updateComment) {
+          return res
+            .status(404)
+            .send({ message: "commentCount was not updated", success: false });
+        }
         res.status(200).send(result);
       } catch (error) {
-        console.error("Error adding post:", error);
-        res.status(500).json({ message: "Failed to add post" });
+        console.error("Error adding comment:", error);
+        res.status(500).json({ message: "Failed to add comment" });
       }
     });
     app.post("/postReply", async (req, res) => {
@@ -232,11 +269,24 @@ async function run() {
           parentId,
           createdAt: new Date(), // Optional: To track when the post was created
         });
+        const query1 = { _id: new ObjectId(contentId) };
+        const findComment = await postsCollection.findOne(query1); // Finding the post
 
+        if (!findComment) {
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
+        }
+        const updateComment= await postsCollection.updateOne(query1, { $inc: { comments: 1 } });
+        if (!updateComment) {
+          return res
+            .status(404)
+            .send({ message: "commentCount was not updated", success: false });
+        }
         res.status(200).send(result);
       } catch (error) {
-        console.error("Error adding post:", error);
-        res.status(500).json({ message: "Failed to add post" });
+        console.error("Error adding reply:", error);
+        res.status(500).json({ message: "Failed to add reply" });
       }
     });
 
@@ -765,6 +815,16 @@ async function run() {
  res.send(result)
 
        } )
+
+      //  delete user-post 
+
+   app.delete('/user-delete-post/:id', async(req, res) => {
+    const { id } = req.params;
+    const query = { _id: new ObjectId(id) };
+    const result =await postsCollection.deleteOne(query);
+    res.send(result);
+      
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
