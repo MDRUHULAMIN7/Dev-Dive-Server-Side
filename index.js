@@ -44,13 +44,13 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' https://vercel.live; style-src 'self' 'unsafe-inline';"
-  );
-  next();
-});
+// app.use((req, res, next) => {
+//   res.setHeader(
+//     "Content-Security-Policy",
+//     "default-src 'self'; script-src 'self' https://vercel.live; style-src 'self' 'unsafe-inline';"
+//   );
+//   next();
+// });
 
 // mongodb
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -851,20 +851,20 @@ async function run() {
         const result = await postsCollection.aggregate([
           {
             $addFields: {
-              totalEngagement: { $add: ["$likes", "$comments"] }, 
+              totalEngagement: { $add: ["$likes", "$comments"] },
             },
           },
           {
-            $sort: { totalEngagement: -1 }, 
+            $sort: { totalEngagement: -1 },
           },
         ]).toArray()
-        
+
         res.send(result);
       } catch (error) {
         res.status(500).send("An error occurred while fetching posts");
       }
     });
-    
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
