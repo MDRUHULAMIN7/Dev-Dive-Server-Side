@@ -680,7 +680,6 @@ async function run() {
     });
 
     // followers in a list
-
     app.get("/followers/all", async (req, res) => {
       try {
         const followersList = await followersCollection
@@ -688,12 +687,13 @@ async function run() {
             {
               $group: {
                 _id: "$following",
+                followingEmail: { $first: "$followingEmail" }, 
+                followingPhoto: { $first: "$followingPhoto" }, 
                 followers: {
                   $push: {
-                    postBy: "$postBy",
-                    name: "$name",
-                    email: "$email",
-                    photo: "$photo",
+                    followerName: "$followerName",
+                    followerEmail: "$followerEmail",
+                    followerPhoto: "$followerPhoto",
                     followTime: "$followTime",
                   },
                 },
@@ -702,17 +702,24 @@ async function run() {
             {
               $project: {
                 _id: 0,
-                user: "$_id",
-                followers: 1,
+                following: "$_id",       
+                followingEmail: 1,      
+                followingPhoto: 1,    
+                followers: 1,           
               },
             },
           ])
           .toArray();
-        res.send(followersList);
+    
+       
+        res.send(followersList); // Send the resulting array
       } catch (error) {
+     
         res.send({ error: "Server error occurred" });
       }
     });
+    
+    
 
     // chatbot ans get
 
