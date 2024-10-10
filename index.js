@@ -18,31 +18,39 @@ require("dotenv").config();
 //       "http://localhost:5175",
 //       "http://localhost:5176",
 //       "https://devdive1.netlify.app/",
+//       "https://devdive1.netlify.app",
+//       "https://0402-dev-dive-server-side.vercel.app/",
+//       "https://0402-dev-dive-server-side.vercel.app",
 //     ],
 //     credentials: true,
 //     optionSuccessStatus: 200,
 //   })
 // );
+
 const corsOptions = {
-  origin: [ "http://localhost:5173",
+  origin: [
+    "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
     "http://localhost:5176",
-    "https://devdive1.netlify.app/",],
+    "https://devdive1.netlify.app/",
+    "https://devdive1.netlify.app",
+    "https://0402-dev-dive-server-side.vercel.app/",
+    "https://0402-dev-dive-server-side.vercel.app",
+  ],
   credentials: true,
   optionSuccessStatus: 200,
-}
-app.use(cors(corsOptions))
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
-
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' https://vercel.live; style-src 'self' 'unsafe-inline';"
-  );
-  next();
-});
+// app.use((req, res, next) => {
+//   res.setHeader(
+//     "Content-Security-Policy",
+//     "default-src 'self'; script-src 'self' https://vercel.live; style-src 'self' 'unsafe-inline';"
+//   );
+//   next();
+// });
 
 // mongodb
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -64,8 +72,10 @@ async function run() {
     const postsCollection = database.collection("posts");
     const likesCollection = database.collection("likes");
     const dislikesCollection = database.collection("dislikes");
-    const commentLikesCollection = database.collection("commentLikeCollection")
-    const commentDislikesCollection = database.collection("commentDislikeCollection")
+    const commentLikesCollection = database.collection("commentLikeCollection");
+    const commentDislikesCollection = database.collection(
+      "commentDislikeCollection"
+    );
     const followersCollection = database.collection("followers");
     const chatbotquestionsCollection = database.collection("chatbotquestions");
 
@@ -232,7 +242,9 @@ async function run() {
             .status(404)
             .send({ message: "Post not found", success: false });
         }
-        const updateComment= await postsCollection.updateOne(query1, { $inc: { comments: 1 } });
+        const updateComment = await postsCollection.updateOne(query1, {
+          $inc: { comments: 1 },
+        });
         if (!updateComment) {
           return res
             .status(404)
@@ -269,11 +281,26 @@ async function run() {
           parentId,
           createdAt: new Date(), // Optional: To track when the post was created
         });
+        const query1 = { _id: new ObjectId(contentId) };
+        const findComment = await postsCollection.findOne(query1); // Finding the post
 
+        if (!findComment) {
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
+        }
+        const updateComment = await postsCollection.updateOne(query1, {
+          $inc: { comments: 1 },
+        });
+        if (!updateComment) {
+          return res
+            .status(404)
+            .send({ message: "commentCount was not updated", success: false });
+        }
         res.status(200).send(result);
       } catch (error) {
-        console.error("Error adding post:", error);
-        res.status(500).json({ message: "Failed to add post" });
+        console.error("Error adding reply:", error);
+        res.status(500).json({ message: "Failed to add reply" });
       }
     });
 
@@ -437,7 +464,9 @@ async function run() {
         if (result5) {
           // User has already liked the post, so remove the like
           await commentLikesCollection.deleteOne(query3); // Remove like from likesCollection
-          await commentsCollection.updateOne(query1, { $inc: { likeCount: -1 } }); // Decrease like count in postsCollection
+          await commentsCollection.updateOne(query1, {
+            $inc: { likeCount: -1 },
+          }); // Decrease like count in postsCollection
           return res.send({ message: "Like removed", success: true });
         }
 
@@ -539,7 +568,7 @@ async function run() {
         const query3 = { commentId: id, email: user.email }; // Query to check if the user disliked this post
 
         const forLike = await commentsCollection.findOne(query1); // Finding the post
-        console.log("comment found")
+        console.log("comment found");
 
         if (!forLike) {
           return res
@@ -555,17 +584,19 @@ async function run() {
 
         const result5 = await commentDislikesCollection.findOne(query3); // Checking if the user already disliked the post
         // if(result5){
-          console.log(result5)
+        console.log(result5);
         // }
         const result6 = await commentLikesCollection.findOne(query3); // Checking if the user liked the post
-        if(result6){
-          console.log("alredy disliked")
+        if (result6) {
+          console.log("alredy disliked");
         }
         if (result5) {
           // User has already disliked the post, so remove the dislike
           await commentDislikesCollection.deleteOne(query3); // Remove dislike from commentDislikesCollection
-          await commentsCollection.updateOne(query1, { $inc: { disLikeCount: -1 } }); // Decrease dislike count in postsCollection
-          console.log("dislike removed")
+          await commentsCollection.updateOne(query1, {
+            $inc: { disLikeCount: -1 },
+          }); // Decrease dislike count in postsCollection
+          console.log("dislike removed");
           return res.send({ message: "Dislike removed", success: true });
         }
 
@@ -575,7 +606,9 @@ async function run() {
           await commentsCollection.updateOne(query1, {
             $inc: { likeCount: -1, disLikeCount: 1 },
           });
-          const result = await commentDislikesCollection.insertOne(dislikesInfo);
+          const result = await commentDislikesCollection.insertOne(
+            dislikesInfo
+          );
           return res.send({
             result,
             message: "Dislike added and like removed",
@@ -584,7 +617,9 @@ async function run() {
         }
 
         // If the user has not liked or disliked the post yet
-        await commentsCollection.updateOne(query1, { $inc: { disLikeCount: 1 } }); // Increase dislike count in postsCollection
+        await commentsCollection.updateOne(query1, {
+          $inc: { disLikeCount: 1 },
+        }); // Increase dislike count in postsCollection
         const result = await commentDislikesCollection.insertOne(dislikesInfo); // Add dislike to commentDislikesCollection
 
         res.send({ result, message: "Dislike added", success: true });
@@ -667,7 +702,6 @@ async function run() {
     });
 
     // followers in a list
-
     app.get("/followers/all", async (req, res) => {
       try {
         const followersList = await followersCollection
@@ -675,31 +709,39 @@ async function run() {
             {
               $group: {
                 _id: "$following",
+                followingEmail: { $first: "$followingEmail" }, 
+                followingPhoto: { $first: "$followingPhoto" }, 
                 followers: {
                   $push: {
-                    postBy: "$postBy",
-                    name: "$name",
-                    email: "$email",
-                    photo: "$photo",
+                    followerName: "$followerName",
+                    followerEmail: "$followerEmail",
+                    followerPhoto: "$followerPhoto",
                     followTime: "$followTime",
-                  },
+                  }
                 },
               },
             },
             {
               $project: {
                 _id: 0,
-                user: "$_id",
-                followers: 1,
+                following: "$_id",       
+                followingEmail: 1,      
+                followingPhoto: 1,    
+                followers: 1,           
               },
             },
           ])
           .toArray();
-        res.send(followersList);
+    
+       
+        res.send(followersList); // Send the resulting array
       } catch (error) {
+     
         res.send({ error: "Server error occurred" });
       }
     });
+    
+    
 
     // chatbot ans get
 
@@ -733,31 +775,6 @@ async function run() {
       }
     });
 
-    // search 
-
-    app.get('/posts/search/post', async (req, res) => {
-      const search = req.query.search;
-  
-      if (!search) {
-          return res.status(400).send({ error: 'Search query is required' });
-      }
-  
-      // console.log(`Search query: ${search}`);
-  
-      const query = { title: { $regex: search, $options: 'i' } };
-  
-      try {
-          const result = await postsCollection.find(query).toArray();
-          res.send(result);
-      } catch (error) {
-          console.error('Error retrieving posts:', error);
-          res.status(500).send({ error: 'An error occurred while searching for posts' });
-      }
-  });
-  
-
-
-    
     // search
 
     app.get("/posts/search/post", async (req, res) => {
@@ -782,36 +799,79 @@ async function run() {
       }
     });
 
+    // search
 
-    // update user-info 
+    app.get("/posts/search/post", async (req, res) => {
+      const search = req.query.search;
+
+      if (!search) {
+        return res.status(400).send({ error: "Search query is required" });
+      }
+
+      // console.log(`Search query: ${search}`);
+
+      const query = { title: { $regex: search, $options: "i" } };
+
+      try {
+        const result = await postsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error retrieving posts:", error);
+        res
+          .status(500)
+          .send({ error: "An error occurred while searching for posts" });
+      }
+    });
+
+    // update user-info
 
     app.put("/users-update/:email", async (req, res) => {
       const { email } = req.params;
-      const  updatedUSerInfo = req.body;
+      const updatedUSerInfo = req.body;
 
-    const   updateDoc ={
-       $set: {
-         name: updatedUSerInfo.name,
-        photoUrl: updatedUSerInfo.photoUrl,
-        coverPhoto: updatedUSerInfo.coverPhoto,
-       },
-     };
-    
- const query = {email:email}
- const result = await usersCollection.updateOne(query,updateDoc)
- res.send(result)
+      const updateDoc = {
+        $set: {
+          name: updatedUSerInfo.name,
+          photoUrl: updatedUSerInfo.photoUrl,
+          coverPhoto: updatedUSerInfo.coverPhoto,
+        },
+      };
 
-       } )
+      const query = { email: email };
+      const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
 
-      //  delete user-post 
+    //  delete user-post
 
-   app.delete('/user-delete-post/:id', async(req, res) => {
-    const { id } = req.params;
-    const query = { _id: new ObjectId(id) };
-    const result =await postsCollection.deleteOne(query);
-    res.send(result);
-      
-    })
+    app.delete("/user-delete-post/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await postsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // get popular post
+
+    app.get("/get-popular-posts", async (req, res) => {
+      try {
+        const result = await postsCollection.aggregate([
+          {
+            $addFields: {
+              totalEngagement: { $add: ["$likes", "$comments"] },
+            },
+          },
+          {
+            $sort: { totalEngagement: -1 },
+          },
+        ]).toArray()
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("An error occurred while fetching posts");
+      }
+    });
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
@@ -825,7 +885,6 @@ run().catch(console.dir);
 app.get("/", (req, res) => {
   res.send("DevDive is  on the way");
 });
-
 
 app.listen(port, () => {
   console.log(`DevDive is running on:${port}`);

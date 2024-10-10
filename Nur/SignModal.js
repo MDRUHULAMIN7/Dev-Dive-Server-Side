@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-module.exports = (usersCollection, postsCollection) => {
+module.exports = (usersCollection) => {
   router.get("/users", async (req, res) => {
     const cursor = usersCollection.find();
     const result = await cursor.toArray();
