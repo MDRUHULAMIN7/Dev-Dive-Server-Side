@@ -826,6 +826,28 @@ async function run() {
       
     })
 
+    // get popular post
+
+    app.get("/get-popular-posts", async (req, res) => {
+      try {
+        const result = await postsCollection.aggregate([
+          {
+            $addFields: {
+              totalEngagement: { $add: ["$likes", "$comments"] }, 
+            },
+          },
+          {
+            $sort: { totalEngagement: -1 }, 
+          },
+        ]).toArray()
+        
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("An error occurred while fetching posts");
+      }
+    });
+    
+
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
   } finally {
