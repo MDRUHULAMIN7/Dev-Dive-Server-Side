@@ -7,6 +7,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
+
+
 // Middleware
 // app.use(cors());
 
@@ -80,6 +82,7 @@ async function run() {
     const chatbotquestionsCollection = database.collection("chatbotquestions");
 
     const messagesCollection = database.collection("messages");
+    const videoCallCollection = database.collection("videoCall");
 
     // All Operations By Nur
     // Import Route
@@ -994,11 +997,11 @@ app.get("/followers/all", async (req, res) => {
       const result = await messagesCollection.insertOne(messageInfo);
       res.send(result);
     })
-
+// get -message for user
     app.post('/get-messages', async (req, res) => {
       const { sender, reciver } = req.body;
     
-      console.log(sender?.email, reciver?.email);
+    
     
       const query = {
         $or: [
@@ -1017,9 +1020,57 @@ app.get("/followers/all", async (req, res) => {
     });
     
 
+    // delete message
+
+    app.delete('/delete-message/:id', async (req, res) => {
+
+     const { id } = req.params;
+
+      const query = { _id: new ObjectId(id) };
+    
+      try {
+        const result = await messagesCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error('Error deleting message:', error);
+        res.status(500).send({ error: 'Failed to delete message' });
+      }
+    })
+
+// edit message 
+
+    app.put("/edit/:id", async (req, res) => {
+  const { id } = req.params; 
+  const { message } = req.body; 
+
+  const query = { _id: new ObjectId(id) };
+
+ // Find the message by ID and update it
+ const updatedMessage = await messagesCollection.findOne(query);
+
+ if (!updatedMessage) {
+   return res.status(404).json({ error: "Message not found" });
+ }
+
+  const updatedDoc = {
+    $set: {
+      message: message,
+    },
+  };
+  const result = await messagesCollection.updateOne(query, updatedDoc);
+  res.send(result);
+    });
+  
+
 
   
-  
+
+
+
+
+
+
+
 
 
     await client.db("admin").command({ ping: 1 });
