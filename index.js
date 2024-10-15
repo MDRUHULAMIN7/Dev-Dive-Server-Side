@@ -7,8 +7,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
-
-
 // Middleware
 // app.use(cors());
 
@@ -83,6 +81,7 @@ async function run() {
 
     const messagesCollection = database.collection("messages");
     const videoCallCollection = database.collection("videoCall");
+    const archiveDataCollection = database.collection("archiveData");
 
     // All Operations By Nur
     // Import Route
@@ -92,10 +91,12 @@ async function run() {
       likesCollection,
       commentsCollection
     );
+    const ArchiveData = require("./Nur/ArchiveData")(archiveDataCollection);
 
     // Use Route
     app.use(SignModal);
     app.use(LeaderBoard);
+    app.use(ArchiveData);
 
     // End Of All Operations By Nur
 
@@ -436,39 +437,42 @@ async function run() {
     //   }
     // });
 
-    
     app.post("/like/:id", async (req, res) => {
       try {
         const { id } = req.params; // Post ID from params
         const user = req.body.newuser; // User info from request body
-    
+
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
-    
+
         const query1 = { _id: new ObjectId(id) }; // Find the post by ID
         const query3 = { postId: id, email: user.email }; // Check if the user interacted with this post
-    
+
         const post = await postsCollection.findOne(query1); // Retrieve the post
-    
+
         if (!post) {
-          return res.status(404).send({ message: "Post not found", success: false });
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
         }
-    
+
         const result5 = await likesCollection.findOne(query3); // Check if the user liked the post
         const result6 = await dislikesCollection.findOne(query3); // Check if the user disliked the post
-    
+
         if (result5) {
           // If the user already liked the post, remove the like
           await likesCollection.deleteOne(query3); // Remove like
           await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count
           return res.send({ message: "Like removed", success: true });
         }
-    
+
         if (result6) {
           // If the user previously disliked, remove the dislike and add a like
           await dislikesCollection.deleteOne(query3); // Remove dislike
-          await postsCollection.updateOne(query1, { $inc: { dislikes: -1, likes: 1 } }); // Update counts
-    
+          await postsCollection.updateOne(query1, {
+            $inc: { dislikes: -1, likes: 1 },
+          }); // Update counts
+
           const likeInfo = {
             postId: id,
             ...user,
@@ -476,9 +480,12 @@ async function run() {
             type: "like",
           };
           await likesCollection.insertOne(likeInfo); // Add like
-          return res.send({ message: "Like added and dislike removed", success: true });
+          return res.send({
+            message: "Like added and dislike removed",
+            success: true,
+          });
         }
-    
+
         // If the user hasn't liked or disliked yet, add a like
         await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count
         const likeInfo = {
@@ -488,15 +495,13 @@ async function run() {
           type: "like",
         };
         await likesCollection.insertOne(likeInfo); // Add like to collection
-    
+
         res.send({ message: "Like added", success: true });
       } catch (error) {
         console.error("Error in like operation:", error); // Log any errors
         res.status(500).send({ message: "An error occurred", success: false }); // Return error response
       }
     });
-    
-
 
     app.post("/commentLike/:id", async (req, res) => {
       try {
@@ -702,43 +707,50 @@ async function run() {
       try {
         const { id } = req.params;
         const user = req.body.newuser;
-    
+
         if (!user || !user.email) {
           return res.status(400).send({ message: "Invalid user data" });
         }
-    
+
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
-    
+
         // Fetch the post details by postId
         const post = await postsCollection.findOne({ _id: new ObjectId(id) });
         if (!post) {
           return res.status(404).send({ message: "Post not found" });
         }
-    
+
         // Check if the user is already following the post's author
         const queryForExistingFollow = {
           postId: id,
           followerEmail: user.email,
         };
-    
-        const existingFollow = await followersCollection.findOne(queryForExistingFollow);
+
+        const existingFollow = await followersCollection.findOne(
+          queryForExistingFollow
+        );
         const queryForPostOwner = { email: post.userEmail };
-    
+
         if (existingFollow) {
           // Unfollow logic: delete the follow record and decrement follower count
           const session = client.startSession(); // Start a session to ensure atomicity
           try {
             session.startTransaction();
-    
-            await followersCollection.deleteOne(queryForExistingFollow, { session });
+
+            await followersCollection.deleteOne(queryForExistingFollow, {
+              session,
+            });
             await usersCollection.updateOne(
               queryForPostOwner,
-              { $inc: { 
-                followers: -1 } },
+              {
+                $inc: {
+                  followers: -1,
+                },
+              },
               { session }
             );
-    
+
             await session.commitTransaction();
             return res.status(200).send({ message: "Unfollowed successfully" });
           } catch (error) {
@@ -759,18 +771,18 @@ async function run() {
             followerPhoto: user.photo,
             followTime: formattedDateTime,
           };
-    
+
           const session = client.startSession(); // Start a session for follow logic
           try {
             session.startTransaction();
-    
+
             await followersCollection.insertOne(followInfo, { session });
             await usersCollection.updateOne(
               queryForPostOwner,
               { $inc: { followers: 1 } },
               { session }
             );
-    
+
             await session.commitTransaction();
             return res.status(200).send({ message: "Followed successfully" });
           } catch (error) {
@@ -782,10 +794,11 @@ async function run() {
         }
       } catch (error) {
         console.error("Error in /follow/:id:", error);
-        res.status(500).send({ message: "Internal Server Error", error: error.message });
+        res
+          .status(500)
+          .send({ message: "Internal Server Error", error: error.message });
       }
     });
-    
 
     // get followers
 
@@ -794,48 +807,45 @@ async function run() {
       res.send(result);
     });
 
-// Fetch all followers grouped by following user
-app.get("/followers/all", async (req, res) => {
-  try {
-    const followersList = await followersCollection
-      .aggregate([
-        {
-          $group: {
-            _id: "$followingEmail",  // Group by followingEmail
-            followingName: { $first: "$following" },  // Get the following user's name
-            followingPhoto: { $first: "$followingPhoto" },  // Get the following user's photo
-            followers: {
-              $push: {
-                name: "$followerName",  // Follower's name
-                email: "$followerEmail",  // Follower's email
-                photo: "$followerPhoto",  // Follower's photo
-                time: "$followTime",  // Follow time
+    // Fetch all followers grouped by following user
+    app.get("/followers/all", async (req, res) => {
+      try {
+        const followersList = await followersCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$followingEmail", // Group by followingEmail
+                followingName: { $first: "$following" }, // Get the following user's name
+                followingPhoto: { $first: "$followingPhoto" }, // Get the following user's photo
+                followers: {
+                  $push: {
+                    name: "$followerName", // Follower's name
+                    email: "$followerEmail", // Follower's email
+                    photo: "$followerPhoto", // Follower's photo
+                    time: "$followTime", // Follow time
+                  },
+                },
               },
             },
-          },
-        },
-        {
-          $project: {
-            _id: 0,  // Exclude _id
-            email: "$_id",  // Rename _id to email (followingEmail)
-            name: "$followingName",  // Include the following user's name
-            photo: "$followingPhoto",  // Include the following user's photo
-            followers: 1,  // Include followers array
-          },
-        },
-      ])
-      .toArray();
+            {
+              $project: {
+                _id: 0, // Exclude _id
+                email: "$_id", // Rename _id to email (followingEmail)
+                name: "$followingName", // Include the following user's name
+                photo: "$followingPhoto", // Include the following user's photo
+                followers: 1, // Include followers array
+              },
+            },
+          ])
+          .toArray();
 
-    // Send the resulting list as JSON
-    res.status(200).json(followersList);
-  } catch (error) {
-    console.error("Error fetching followers:", error);  // Log the error for debugging
-    res.status(500).json({ error: "Server error occurred" });  // Send a 500 status on error
-  }
-});
-
-    
-    
+        // Send the resulting list as JSON
+        res.status(200).json(followersList);
+      } catch (error) {
+        console.error("Error fetching followers:", error); // Log the error for debugging
+        res.status(500).json({ error: "Server error occurred" }); // Send a 500 status on error
+      }
+    });
 
     // chatbot ans get
 
@@ -949,16 +959,18 @@ app.get("/followers/all", async (req, res) => {
 
     app.get("/get-popular-posts", async (req, res) => {
       try {
-        const result = await postsCollection.aggregate([
-          {
-            $addFields: {
-              totalEngagement: { $add: ["$likes", "$comments"] },
+        const result = await postsCollection
+          .aggregate([
+            {
+              $addFields: {
+                totalEngagement: { $add: ["$likes", "$comments"] },
+              },
             },
-          },
-          {
-            $sort: { totalEngagement: -1 },
-          },
-        ]).toArray()
+            {
+              $sort: { totalEngagement: -1 },
+            },
+          ])
+          .toArray();
 
         res.send(result);
       } catch (error) {
@@ -966,137 +978,112 @@ app.get("/followers/all", async (req, res) => {
       }
     });
 
-    // Ruhul Amin 
+    // Ruhul Amin
 
+    // create jwt token
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1d",
+      });
 
-       // create jwt token 
-   app.post('/jwt',async(req,res)=>{
-    const user = req.body;
-    console.log(user);
-    const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{
-        expiresIn : '1d'
-    })
-  
-
-    res.send({token})
- 
-})
-
+      res.send({ token });
+    });
 
     // get admin user data
 
-    app.get('/users/admin/:email', async (req, res) => {
+    app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
-    
-   
-    
+
       const query = { email: email };
-    
+
       try {
         const user = await usersCollection.findOne(query);
-    
+
         if (user) {
-         
-          
-        
           const admin = user.role === "admin";
           return res.send({ admin });
         } else {
-
           return res.send({ admin: false });
         }
       } catch (error) {
- 
         return res.status(500).send({ message: "Internal server error" });
       }
     });
 
     // End Ruhul Amin
 
-    // post message 
+    // post message
 
-    app.post('/messages',async (req, res) => {
-
+    app.post("/messages", async (req, res) => {
       const messageInfo = req.body;
-     
+
       const result = await messagesCollection.insertOne(messageInfo);
       res.send(result);
-    })
-// get -message for user
-    app.post('/get-messages', async (req, res) => {
+    });
+    // get -message for user
+    app.post("/get-messages", async (req, res) => {
       const { sender, reciver } = req.body;
-    
-    
-    
+
       const query = {
         $or: [
           { senderEmail: sender?.email, receiverEmail: reciver?.email },
-          { senderEmail: reciver?.email, receiverEmail: sender?.email }
-        ]
+          { senderEmail: reciver?.email, receiverEmail: sender?.email },
+        ],
       };
-    
+
       try {
-        const result = await messagesCollection.find(query).sort({ timestamp: 1 }).toArray(); // Sort by time if needed
+        const result = await messagesCollection
+          .find(query)
+          .sort({ timestamp: 1 })
+          .toArray(); // Sort by time if needed
         res.send(result);
       } catch (error) {
-        console.error('Error fetching messages:', error);
-        res.status(500).send({ error: 'Failed to fetch messages' });
+        console.error("Error fetching messages:", error);
+        res.status(500).send({ error: "Failed to fetch messages" });
       }
     });
-    
 
     // delete message
 
-    app.delete('/delete-message/:id', async (req, res) => {
-
-     const { id } = req.params;
+    app.delete("/delete-message/:id", async (req, res) => {
+      const { id } = req.params;
 
       const query = { _id: new ObjectId(id) };
-    
+
       try {
         const result = await messagesCollection.deleteOne(query);
         res.send(result);
       } catch (error) {
-        console.error('Error deleting message:', error);
-        res.status(500).send({ error: 'Failed to delete message' });
+        console.error("Error deleting message:", error);
+        res.status(500).send({ error: "Failed to delete message" });
       }
-    })
+    });
 
-// edit message 
+    // edit message
 
     app.put("/edit/:id", async (req, res) => {
-  const { id } = req.params; 
-  const { message } = req.body; 
+      const { id } = req.params;
+      const { message } = req.body;
 
-  const query = { _id: new ObjectId(id) };
+      const query = { _id: new ObjectId(id) };
 
- // Find the message by ID and update it
- const updatedMessage = await messagesCollection.findOne(query);
+      // Find the message by ID and update it
+      const updatedMessage = await messagesCollection.findOne(query);
 
- if (!updatedMessage) {
-   return res.status(404).json({ error: "Message not found" });
- }
+      if (!updatedMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
 
-  const updatedDoc = {
-    $set: {
-      message: message,
-    },
-  };
-  const result = await messagesCollection.updateOne(query, updatedDoc);
-  res.send(result);
+      const updatedDoc = {
+        $set: {
+          message: message,
+        },
+      };
+      const result = await messagesCollection.updateOne(query, updatedDoc);
+      res.send(result);
     });
-  
-
-
-  
-
-
-
-
-
-
-
-
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
