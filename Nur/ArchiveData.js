@@ -19,18 +19,18 @@ module.exports = (archiveDataCollection) => {
       const result = await archiveDataCollection.insertOne(req.body);
 
       if (result.insertedId) {
-        console.log("Data archived successfully:", result.insertedId);
+        console.log("Post archived successfully:", result.insertedId);
         return res.status(200).json({
-          message: "Data archived successfully",
+          message: "Post archived successfully",
           result,
         });
       } else {
-        throw new Error("Failed to insert archive data");
+        throw new Error("Failed to archive post");
       }
     } catch (error) {
-      console.error("Error archiving data:", error);
+      console.error("Error archiving post:", error);
       return res.status(500).json({
-        message: "Failed to archive data",
+        message: "Failed to archive post",
         error,
       });
     }
