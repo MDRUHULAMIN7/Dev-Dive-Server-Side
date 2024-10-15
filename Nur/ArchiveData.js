@@ -4,23 +4,35 @@ const router = express.Router();
 module.exports = (archiveDataCollection) => {
   router.post("/archiveData", async (req, res) => {
     try {
-      const archiveData = req.body;
-      console.log(archiveData);
+      const { post_id } = req.body; // Extract post_id from the request body
+      console.log("Received post_id:", post_id);
 
-      const result = await archiveDataCollection.insertOne(archiveData);
+      // Check if the post_id already exists in the archive
+      const existingPost = await archiveDataCollection.findOne({ post_id });
+
+      if (existingPost) {
+        console.log("Post already archived:", post_id);
+        return res.status(400).json({ message: "Post already archived" });
+      }
+
+      // If not found, insert the new archive data
+      const result = await archiveDataCollection.insertOne(req.body);
 
       if (result.insertedId) {
         console.log("Data archived successfully:", result.insertedId);
-        res.status(200).json({ message: "Data archived successfully", result });
+        return res.status(200).json({
+          message: "Data archived successfully",
+          result,
+        });
       } else {
         throw new Error("Failed to insert archive data");
       }
-
-      console.log("Data archived successfully.");
-      res.send("Data archived successfully.");
     } catch (error) {
       console.error("Error archiving data:", error);
-      res.status(500).json({ message: "Failed to archive data", error });
+      return res.status(500).json({
+        message: "Failed to archive data",
+        error,
+      });
     }
   });
 
