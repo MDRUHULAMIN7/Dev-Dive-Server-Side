@@ -4,11 +4,12 @@ const router = express.Router();
 module.exports = (postsCollection, likesCollection, commentsCollection) => {
   router.get("/leaderBoardPosts", async (req, res) => {
     try {
-      const posts = await postsCollection
-        .find()
-        .sort({ likes: -1 })
-        .limit(5)
-        .toArray();
+      const { loadAllPosts } = req.query;
+      let postsQuery = postsCollection.find().sort({ likes: -1 });
+      if (loadAllPosts !== "true") {
+        postsQuery = postsQuery.limit(5);
+      }
+      const posts = await postsQuery.toArray();
       res.status(200).json(posts);
     } catch (error) {
       console.error("Error fetching posts:", error);
@@ -18,25 +19,46 @@ module.exports = (postsCollection, likesCollection, commentsCollection) => {
 
   router.get("/leaderBoardLikes", async (req, res) => {
     try {
-      const result = await likesCollection
-        .aggregate([
-          {
-            $group: {
-              _id: "$email",
-              count: { $sum: 1 },
-              name: { $first: "$name" },
+      const { loadAllLikes } = req.query;
+      let likesQuery = likesCollection;
+      if (loadAllLikes === "true") {
+        likesQuery = await likesQuery
+          .aggregate([
+            {
+              $group: {
+                _id: "$email",
+                count: { $sum: 1 },
+                name: { $first: "$name" },
+              },
             },
-          },
-          {
-            $sort: { count: -1 },
-          },
-          {
-            $limit: 5,
-          },
-        ])
-        .toArray();
+            {
+              $sort: { count: -1 },
+            },
+          ])
+          .toArray();
+      }
 
-      res.status(200).send(result);
+      if (loadAllLikes !== "true") {
+        likesQuery = await likesQuery
+          .aggregate([
+            {
+              $group: {
+                _id: "$email",
+                count: { $sum: 1 },
+                name: { $first: "$name" },
+              },
+            },
+            {
+              $sort: { count: -1 },
+            },
+            {
+              $limit: 5,
+            },
+          ])
+          .toArray();
+      }
+
+      res.status(200).send(likesQuery);
     } catch (error) {
       console.error("Error fetching leaderBoard likes:", error);
       res.status(500).send({ message: "Failed to fetch leaderBoard likes" });
