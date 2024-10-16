@@ -31,15 +31,21 @@ module.exports = (archiveDataCollection) => {
 
   router.post("/archiveData", async (req, res) => {
     try {
-      const { post_id } = req.body; // Extract post_id from the request body
+      const { post_id, archivedBy } = req.body; // Extract post_id from the request body
       console.log("Received post_id:", post_id);
+      console.log("Received user email:", archivedBy.email);
 
       // Check if the post_id already exists in the archive
-      const existingPost = await archiveDataCollection.findOne({ post_id });
+      const existingPost = await archiveDataCollection.findOne({
+        post_id,
+        "archivedBy.email": archivedBy.email,
+      });
 
       if (existingPost) {
-        console.log("Post already archived:", post_id);
-        return res.status(400).json({ message: "Post already archived" });
+        console.log("Post already archived by this user:", post_id);
+        return res
+          .status(400)
+          .json({ message: "Post already archived by this user" });
       }
 
       // If not found, insert the new archive data
