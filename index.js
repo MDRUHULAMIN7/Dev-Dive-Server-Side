@@ -448,7 +448,7 @@ async function run() {
     app.post("/like/:id", async (req, res) => {
       try {
         const { id } = req.params; // Post ID from params
-        const user = req.body.newuser; // User info from request body
+        const user = req.body.newUser; // User info from request body
 
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
@@ -580,7 +580,7 @@ async function run() {
     app.post("/dislike/:id", async (req, res) => {
       try {
         const { id } = req.params; // Post ID
-        const user = req.body.newuser; // User information from request body
+        const user = req.body.newUser; // User information from request body
 
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
@@ -669,7 +669,7 @@ async function run() {
         // }
         const result6 = await commentLikesCollection.findOne(query3); // Checking if the user liked the post
         if (result6) {
-          console.log("alredy disliked");
+       
         }
         if (result5) {
           // User has already disliked the post, so remove the dislike
@@ -677,7 +677,7 @@ async function run() {
           await commentsCollection.updateOne(query1, {
             $inc: { disLikeCount: -1 },
           }); // Decrease dislike count in postsCollection
-          console.log("dislike removed");
+       
           return res.send({ message: "Dislike removed", success: true });
         }
 
@@ -1155,6 +1155,29 @@ async function run() {
         res.status(500).send({ error: "Failed to delete message" });
       }
     });
+
+
+    // get - following post 
+
+    app.get("/get-following-posts/:email", async (req, res) => {
+       const email = req.params.email;
+
+
+        const query ={ followerEmail : email }
+            const result = await followersCollection.find(query).toArray();
+          
+            if(result?.length){
+
+              const followingEmails=  result?.map(follower=>follower?.followingEmail );
+              const query2 = { userEmail: { $in: followingEmails } };
+              const followingPosts= await postsCollection.find(query2).toArray();
+              
+             
+              res.send(followingPosts);
+            }
+      
+
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
