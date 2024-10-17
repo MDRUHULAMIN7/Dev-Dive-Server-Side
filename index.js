@@ -7,8 +7,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
-
-
 // Middleware
 // app.use(cors());
 
@@ -82,7 +80,6 @@ async function run() {
     const chatbotquestionsCollection = database.collection("chatbotquestions");
 
     const messagesCollection = database.collection("messages");
-    const videoCallCollection = database.collection("videoCall");
 
     // All Operations By Nur
     // Import Route
@@ -698,55 +695,43 @@ async function run() {
     });
 
     // follow / unfollow
+
     app.post("/follow/:id", async (req, res) => {
       try {
         const { id } = req.params;
         const user = req.body.newuser;
-    
-        if (!user || !user.email) {
-          return res.status(400).send({ message: "Invalid user data" });
-        }
-    
+
+        // Prepare follow time
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
-    
+
         // Fetch the post details by postId
         const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+
         if (!post) {
           return res.status(404).send({ message: "Post not found" });
         }
-    
+
         // Check if the user is already following the post's author
         const queryForExistingFollow = {
           postId: id,
           followerEmail: user.email,
         };
-    
-        const existingFollow = await followersCollection.findOne(queryForExistingFollow);
-        const queryForPostOwner = { email: post.userEmail };
-    
+        const existingFollow = await followersCollection.findOne(
+          queryForExistingFollow
+        );
+
+        const queryForPostOwner = { email: post.userEmail }; // Find the post owner's details
+
         if (existingFollow) {
           // Unfollow logic: delete the follow record and decrement follower count
-          const session = client.startSession(); // Start a session to ensure atomicity
-          try {
-            session.startTransaction();
-    
-            await followersCollection.deleteOne(queryForExistingFollow, { session });
-            await usersCollection.updateOne(
-              queryForPostOwner,
-              { $inc: { 
-                followers: -1 } },
-              { session }
-            );
-    
-            await session.commitTransaction();
-            return res.status(200).send({ message: "Unfollowed successfully" });
-          } catch (error) {
-            await session.abortTransaction();
-            throw error;
-          } finally {
-            session.endSession();
-          }
+          await Promise.all([
+            followersCollection.deleteOne(queryForExistingFollow),
+            usersCollection.updateOne(queryForPostOwner, {
+              $inc: { followers: -1 },
+            }), // Correct field name
+          ]);
+          return res.status(200).send({ message: "Unfollowed successfully" });
         } else {
           // Follow logic: insert a new follower record and increment follower count
           const followInfo = {
@@ -759,33 +744,20 @@ async function run() {
             followerPhoto: user.photo,
             followTime: formattedDateTime,
           };
-    
-          const session = client.startSession(); // Start a session for follow logic
-          try {
-            session.startTransaction();
-    
-            await followersCollection.insertOne(followInfo, { session });
-            await usersCollection.updateOne(
-              queryForPostOwner,
-              { $inc: { followers: 1 } },
-              { session }
-            );
-    
-            await session.commitTransaction();
-            return res.status(200).send({ message: "Followed successfully" });
-          } catch (error) {
-            await session.abortTransaction();
-            throw error;
-          } finally {
-            session.endSession();
-          }
+
+          await followersCollection.insertOne(followInfo);
+          await usersCollection.updateOne(queryForPostOwner, {
+            $inc: { followers: 1 },
+          }); // Correct field name
+          return res.status(200).send({ message: "Followed successfully" });
         }
       } catch (error) {
         console.error("Error in /follow/:id:", error);
-        res.status(500).send({ message: "Internal Server Error", error: error.message });
+        res
+          .status(500)
+          .send({ message: "Internal Server Error", error: error.message });
       }
     });
-    
 
     // get followers
 
@@ -1022,11 +994,11 @@ app.get("/followers/all", async (req, res) => {
       const result = await messagesCollection.insertOne(messageInfo);
       res.send(result);
     })
-// get -message for user
+
     app.post('/get-messages', async (req, res) => {
       const { sender, reciver } = req.body;
     
-    
+      console.log(sender?.email, reciver?.email);
     
       const query = {
         $or: [
@@ -1044,58 +1016,46 @@ app.get("/followers/all", async (req, res) => {
       }
     });
     
+// poll
+app.put('/posts/:id/poll/vote', async (req, res) => {
+  const { id } = req.params;  // পোস্ট আইডি
+  const { pollItem } = req.body;  // ভোট করা পোল আইটেম
 
-    // delete message
-
-    app.delete('/delete-message/:id', async (req, res) => {
-
-     const { id } = req.params;
-
-      const query = { _id: new ObjectId(id) };
+  try {
+    // প্রথমে পোস্টটি খুঁজে বের করা
+    const post = await postsCollection.findOne({ _id: new ObjectId(id) });
     
-      try {
-        const result = await messagesCollection.deleteOne(query);
-        res.send(result);
-      } catch (error) {
-        console.error('Error deleting message:', error);
-        res.status(500).send({ error: 'Failed to delete message' });
+    if (post && post.poll) {
+      // poll array এর মধ্যে ভোট বাড়ানো
+      const updatedPoll = post.poll.map(item => {
+        if (item.item === pollItem) {
+          item.count += 1;  // ভোট সংখ্যা ১ বাড়ানো
+        }
+        return item;
+      });
+
+      // পোস্ট আপডেট করা
+      const result = await postsCollection.updateOne(
+        { _id: new ObjectId(id) },  // পোস্টের আইডি দিয়ে ফিল্টার করা
+        { $set: { poll: updatedPoll } }  // poll আপডেট করা
+      );
+
+      if (result.modifiedCount > 0) {
+        const updatedPost = await postsCollection.findOne({ _id: new ObjectId(id) });
+        res.json(updatedPost);  // আপডেট করা পোস্ট রিটার্ন করা
+      } else {
+        res.status(404).json({ message: 'Poll not updated' });
       }
-    })
-
-// edit message 
-
-    app.put("/edit/:id", async (req, res) => {
-  const { id } = req.params; 
-  const { message } = req.body; 
-
-  const query = { _id: new ObjectId(id) };
-
- // Find the message by ID and update it
- const updatedMessage = await messagesCollection.findOne(query);
-
- if (!updatedMessage) {
-   return res.status(404).json({ error: "Message not found" });
- }
-
-  const updatedDoc = {
-    $set: {
-      message: message,
-    },
-  };
-  const result = await messagesCollection.updateOne(query, updatedDoc);
-  res.send(result);
-    });
-  
-
+    } else {
+      res.status(404).json({ message: 'Post or poll not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
   
-
-
-
-
-
-
-
+  
 
 
     await client.db("admin").command({ ping: 1 });
