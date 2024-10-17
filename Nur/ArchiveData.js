@@ -11,17 +11,18 @@ module.exports = (archiveDataCollection) => {
         return res.status(400).json({ message: "userEmail is required" });
       }
 
-      // Use correct dot notation to query nested email field
-      const query = { "archivedBy.email": userEmail };
+      // Search for archived posts by user email
+      const archiveData = await archiveDataCollection
+        .find({ "archivedBy.email": userEmail })
+        .toArray();
 
-      const archiveData = await archiveDataCollection.find(query).toArray();
+      console.log("Archive Data:", archiveData);
 
+      // Return 200 with an empty array if no posts are found
       if (archiveData.length === 0) {
-        console.log("No archive data found for:", userEmail);
-        return res.status(404).json({ message: "No archive data found" });
+        return res.status(200).json([]);
       }
 
-      console.log("Found archive data:", archiveData);
       res.status(200).json(archiveData);
     } catch (error) {
       console.error("Error fetching individual archive data:", error);
