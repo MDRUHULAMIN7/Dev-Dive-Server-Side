@@ -1015,47 +1015,79 @@ app.get("/followers/all", async (req, res) => {
         res.status(500).send({ error: 'Failed to fetch messages' });
       }
     });
+
+
     
 // poll
 app.put('/posts/:id/poll/vote', async (req, res) => {
-  const { id } = req.params;  // পোস্ট আইডি
-  const { pollItem } = req.body;  // ভোট করা পোল আইটেম
+  const { id } = req.params;
+  const { pollItem, email } = req.body;
+
+  const sanitizedEmail = email.replace(/\./g, '_');
 
   try {
-    // প্রথমে পোস্টটি খুঁজে বের করা
+ 
     const post = await postsCollection.findOne({ _id: new ObjectId(id) });
-    
+
     if (post && post.poll) {
-      // poll array এর মধ্যে ভোট বাড়ানো
+      
+      const userVote = post.votes && post.votes[sanitizedEmail]; 
+      
+      if (userVote === pollItem) {
+        
+        const updatedPoll = post.poll.map(item => {
+          if (item.item === pollItem) {
+            item.count -= 1;
+          }
+          return item;
+        });
+
+        const result = await postsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: { poll: updatedPoll },
+            $unset: { [`votes.${sanitizedEmail}`]: "" }
+          }
+        );
+
+        if (result.modifiedCount > 0) {
+          const updatedPost = await postsCollection.findOne({ _id: new ObjectId(id) });
+          return res.json(updatedPost);
+        }
+      }
+
       const updatedPoll = post.poll.map(item => {
+
+        if (item.item === userVote) {
+          item.count -= 1;
+        }
         if (item.item === pollItem) {
-          item.count += 1;  // ভোট সংখ্যা ১ বাড়ানো
+          item.count += 1;
         }
         return item;
       });
 
-      // পোস্ট আপডেট করা
       const result = await postsCollection.updateOne(
-        { _id: new ObjectId(id) },  // পোস্টের আইডি দিয়ে ফিল্টার করা
-        { $set: { poll: updatedPoll } }  // poll আপডেট করা
+        { _id: new ObjectId(id) },
+        {
+          $set: { poll: updatedPoll, [`votes.${sanitizedEmail}`]: pollItem } 
+        }
       );
 
       if (result.modifiedCount > 0) {
         const updatedPost = await postsCollection.findOne({ _id: new ObjectId(id) });
-        res.json(updatedPost);  // আপডেট করা পোস্ট রিটার্ন করা
+        return res.json(updatedPost); 
       } else {
-        res.status(404).json({ message: 'Poll not updated' });
+        return res.status(404).json({ message: 'Poll not updated' });
       }
     } else {
-      res.status(404).json({ message: 'Post or poll not found' });
+      return res.status(404).json({ message: 'Post or poll not found' });
     }
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 });
 
-  
-  
 
 
     await client.db("admin").command({ ping: 1 });
