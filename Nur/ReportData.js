@@ -26,15 +26,17 @@ module.exports = (reportDataCollection) => {
       const result = await reportDataCollection.insertOne(reportData);
 
       if (result.insertedId) {
-        return res
-          .status(200)
-          .json({ message: "Report submitted successfully." });
+        console.log("Post reported successfully:", result.insertedId);
+        return res.status(200).json({ message: "Post reported successfully." });
       } else {
-        return res.status(500).json({ message: "Failed to submit report." });
+        throw new Error("Failed to report post");
       }
     } catch (error) {
-      console.error("Error saving report data:", error);
-      res.status(500).json({ message: "Failed to save report data." });
+      console.error("Error reporting data:", error);
+      return res.status(500).json({
+        message: "Failed to report post",
+        error,
+      });
     }
   });
 
