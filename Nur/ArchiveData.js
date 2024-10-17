@@ -30,6 +30,44 @@ module.exports = (archiveDataCollection) => {
     }
   });
 
+  router.get("/checkArchivedStatus", async (req, res) => {
+    try {
+      const { post_id, email } = req.query;
+
+      console.log(
+        "Checking archive status for post:",
+        post_id,
+        "and user:",
+        email
+      );
+
+      if (!post_id || !email) {
+        return res
+          .status(400)
+          .json({ message: "Post ID and user email are required." });
+      }
+
+      const existingArchive = await archiveDataCollection.findOne({
+        post_id,
+        "archivedBy.email": email,
+      });
+
+      if (existingArchive) {
+        console.log("Post already archived:", post_id);
+        return res.status(200).json({ archived: true });
+      } else {
+        console.log("Post not archived.");
+        return res.status(200).json({ archived: false });
+      }
+    } catch (error) {
+      console.error("Error checking archive status:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to check archive status." });
+    }
+  });
+
+
   router.post("/archiveData", async (req, res) => {
     try {
       const { post_id, archivedBy } = req.body; // Extract post_id from the request body
