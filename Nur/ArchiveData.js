@@ -5,7 +5,7 @@ module.exports = (archiveDataCollection) => {
   router.get("/getIndividualArchiveData", async (req, res) => {
     try {
       const { userEmail } = req.query;
-      console.log("Received userEmail:", userEmail);
+      console.log("Received userEmail to get data:", userEmail);
 
       if (!userEmail) {
         return res.status(400).json({ message: "userEmail is required" });
@@ -16,7 +16,7 @@ module.exports = (archiveDataCollection) => {
         .find({ "archivedBy.email": userEmail })
         .toArray();
 
-      console.log("Archive Data:", archiveData);
+      // console.log("Archive Data:", archiveData);
 
       // Return 200 with an empty array if no posts are found
       if (archiveData.length === 0) {
@@ -74,8 +74,13 @@ module.exports = (archiveDataCollection) => {
     try {
       const { postId } = req.params;
       console.log("Received postId to unarchive:", postId);
+      const { email } = req.query;
+      console.log("Received email to unarchive:", email);
 
-      const result = await archiveDataCollection.deleteOne({ post_id: postId });
+      const result = await archiveDataCollection.deleteOne({
+        post_id: postId,
+        "archivedBy.email": email,
+      });
 
       if (result.deletedCount > 0) {
         console.log("Post unarchived successfully:", postId);
