@@ -2,6 +2,44 @@ const express = require("express");
 const router = express.Router();
 
 module.exports = (reportDataCollection) => {
+  router.get("/checkReportStatus", async (req, res) => {
+    try {
+      const { post_id, email } = req.query;
+
+      console.log(
+        "Checking report status for post:",
+        post_id,
+        "and user:",
+        email
+      );
+
+      if (!post_id || !email) {
+        return res
+          .status(400)
+          .json({ message: "Post ID and user email are required." });
+      }
+
+      const existingReport = await reportDataCollection.findOne({
+        post_id,
+        "reportBy.email": email,
+      });
+
+      if (existingReport) {
+        console.log("Post already reported:", post_id);
+        return res.status(200).json({ reported: true });
+      } else {
+        console.log("Post not reported.");
+        return res.status(200).json({ reported: false });
+      }
+    } catch (error) {
+      console.error("Error checking report status:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to check report status." });
+    }
+  });
+
+
   router.post("/reportData", async (req, res) => {
     try {
       const reportData = req.body;
