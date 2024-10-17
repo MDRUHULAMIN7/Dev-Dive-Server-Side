@@ -82,6 +82,7 @@ async function run() {
     const messagesCollection = database.collection("messages");
     const videoCallCollection = database.collection("videoCall");
     const archiveDataCollection = database.collection("archiveData");
+    const reportDataCollection = database.collection("reportData");
 
     // All Operations By Nur
     // Import Route
@@ -92,11 +93,13 @@ async function run() {
       commentsCollection
     );
     const ArchiveData = require("./Nur/ArchiveData")(archiveDataCollection);
+    const ReportData = require("./Nur/ReportData")(reportDataCollection);
 
     // Use Route
     app.use(SignModal);
     app.use(LeaderBoard);
     app.use(ArchiveData);
+    app.use(ReportData);
 
     // End Of All Operations By Nur
 
