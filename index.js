@@ -464,7 +464,7 @@ async function run() {
 
         const forLike = await postsCollection.findOne(query1);
 
-        if (!post) {
+        if (!forLike) {
           return res.status(404).send({ message: "Post not found", success: false });
         }
 
