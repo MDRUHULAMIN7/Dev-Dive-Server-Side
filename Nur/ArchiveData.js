@@ -4,30 +4,69 @@ const router = express.Router();
 module.exports = (archiveDataCollection) => {
   router.get("/getIndividualArchiveData", async (req, res) => {
     try {
-      const { userEmail } = req.query; // Extract userEmail from query params
-      console.log("Received userEmail:", userEmail);
+      const { userEmail } = req.query;
+      console.log("Received userEmail to get data:", userEmail);
 
       if (!userEmail) {
         return res.status(400).json({ message: "userEmail is required" });
       }
 
-      // Use correct dot notation to query nested email field
-      const query = { "archivedBy.email": userEmail };
+      // Search for archived posts by user email
+      const archiveData = await archiveDataCollection
+        .find({ "archivedBy.email": userEmail })
+        .toArray();
 
-      const archiveData = await archiveDataCollection.find(query).toArray();
+      // console.log("Archive Data:", archiveData);
 
+      // Return 200 with an empty array if no posts are found
       if (archiveData.length === 0) {
-        console.log("No archive data found for:", userEmail);
-        return res.status(404).json({ message: "No archive data found" });
+        return res.status(200).json([]);
       }
 
-      console.log("Found archive data:", archiveData);
       res.status(200).json(archiveData);
     } catch (error) {
       console.error("Error fetching individual archive data:", error);
       res.status(500).json({ message: "Failed to fetch archive data" });
     }
   });
+
+  router.get("/checkArchivedStatus", async (req, res) => {
+    try {
+      const { post_id, email } = req.query;
+
+      console.log(
+        "Checking archive status for post:",
+        post_id,
+        "and user:",
+        email
+      );
+
+      if (!post_id || !email) {
+        return res
+          .status(400)
+          .json({ message: "Post ID and user email are required." });
+      }
+
+      const existingArchive = await archiveDataCollection.findOne({
+        post_id,
+        "archivedBy.email": email,
+      });
+
+      if (existingArchive) {
+        console.log("Post already archived:", post_id);
+        return res.status(200).json({ archived: true });
+      } else {
+        console.log("Post not archived.");
+        return res.status(200).json({ archived: false });
+      }
+    } catch (error) {
+      console.error("Error checking archive status:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to check archive status." });
+    }
+  });
+
 
   router.post("/archiveData", async (req, res) => {
     try {
@@ -66,6 +105,32 @@ module.exports = (archiveDataCollection) => {
         message: "Failed to archive post",
         error,
       });
+    }
+  });
+
+  router.delete("/unarchive/:postId", async (req, res) => {
+    try {
+      const { postId } = req.params;
+      console.log("Received postId to unarchive:", postId);
+      const { email } = req.query;
+      console.log("Received email to unarchive:", email);
+
+      const result = await archiveDataCollection.deleteOne({
+        post_id: postId,
+        "archivedBy.email": email,
+      });
+
+      if (result.deletedCount > 0) {
+        console.log("Post unarchived successfully:", postId);
+        return res
+          .status(200)
+          .json({ message: "Post unarchived successfully" });
+      } else {
+        return res.status(404).json({ message: "Post not found" });
+      }
+    } catch (error) {
+      console.error("Error unarchiving post:", error);
+      res.status(500).json({ message: "Failed to unarchive post" });
     }
   });
 
