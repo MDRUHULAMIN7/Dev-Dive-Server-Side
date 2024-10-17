@@ -4,7 +4,7 @@ const router = express.Router();
 module.exports = (archiveDataCollection) => {
   router.get("/getIndividualArchiveData", async (req, res) => {
     try {
-      const { userEmail } = req.query; // Extract userEmail from query params
+      const { userEmail } = req.query;
       console.log("Received userEmail:", userEmail);
 
       if (!userEmail) {
@@ -66,6 +66,27 @@ module.exports = (archiveDataCollection) => {
         message: "Failed to archive post",
         error,
       });
+    }
+  });
+
+  router.delete("/unarchive/:postId", async (req, res) => {
+    try {
+      const { postId } = req.params;
+      console.log("Received postId to unarchive:", postId);
+
+      const result = await archiveDataCollection.deleteOne({ post_id: postId });
+
+      if (result.deletedCount > 0) {
+        console.log("Post unarchived successfully:", postId);
+        return res
+          .status(200)
+          .json({ message: "Post unarchived successfully" });
+      } else {
+        return res.status(404).json({ message: "Post not found" });
+      }
+    } catch (error) {
+      console.error("Error unarchiving post:", error);
+      res.status(500).json({ message: "Failed to unarchive post" });
     }
   });
 
