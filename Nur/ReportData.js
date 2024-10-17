@@ -10,9 +10,17 @@ module.exports = (reportDataCollection) => {
       console.log("Received post_id:", post_id);
       console.log("Received user email:", reportBy.email);
 
+      const existingPost = await reportDataCollection.findOne({
+        post_id,
+        "reportBy.email": reportBy.email,
+      });
 
-
-
+      if (existingPost) {
+        console.log("Post already reported by this user:", post_id);
+        return res
+          .status(400)
+          .json({ message: "Post already reported by this user" });
+      }
 
       // Save the report data to your MongoDB collection
       const result = await reportDataCollection.insertOne(reportData);
