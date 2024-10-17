@@ -463,7 +463,7 @@ async function run() {
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
 
         const query1 = { _id: new ObjectId(id) }; 
-        const query3 = { postId: id, email: user.email }; 
+        const query3 = { postId: id, email: user.email }
 
         const forLike = await postsCollection.findOne(query1);
 
