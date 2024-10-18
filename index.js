@@ -73,15 +73,12 @@ async function run() {
     const likesCollection = database.collection("likes");
     const dislikesCollection = database.collection("dislikes");
     const commentLikesCollection = database.collection("commentLikeCollection");
-    const commentDislikesCollection = database.collection(
-      "commentDislikeCollection"
-    );
+    const commentDislikesCollection = database.collection("commentDislikeCollection");
     const followersCollection = database.collection("followers");
     const chatbotquestionsCollection = database.collection("chatbotquestions");
-
     const messagesCollection = database.collection("messages");
-    const videoCallCollection = database.collection("videoCall");
-
+    const archiveDataCollection = database.collection("archiveData");
+    const reportDataCollection = database.collection("reportData");
     // All Operations By Nur
     // Import Route
     const SignModal = require("./Nur/SignModal")(usersCollection);
@@ -90,10 +87,14 @@ async function run() {
       likesCollection,
       commentsCollection
     );
+    const ArchiveData = require("./Nur/ArchiveData")(archiveDataCollection);
+    const ReportData = require("./Nur/ReportData")(reportDataCollection);
 
     // Use Route
     app.use(SignModal);
     app.use(LeaderBoard);
+    app.use(ArchiveData);
+    app.use(ReportData);
 
     // End Of All Operations By Nur
 
@@ -669,7 +670,7 @@ async function run() {
         // }
         const result6 = await commentLikesCollection.findOne(query3); // Checking if the user liked the post
         if (result6) {
-       
+
         }
         if (result5) {
           // User has already disliked the post, so remove the dislike
@@ -677,7 +678,7 @@ async function run() {
           await commentsCollection.updateOne(query1, {
             $inc: { disLikeCount: -1 },
           }); // Decrease dislike count in postsCollection
-       
+
           return res.send({ message: "Dislike removed", success: true });
         }
 
@@ -711,6 +712,7 @@ async function run() {
     });
 
     // follow / unfollow
+
     app.post("/follow/:id", async (req, res) => {
       try {
         const { id } = req.params;
@@ -725,6 +727,7 @@ async function run() {
 
         // Fetch the post details by postId
         const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+
         if (!post) {
           return res.status(404).send({ message: "Post not found" });
         }
@@ -1053,8 +1056,6 @@ async function run() {
       }
     });
 
-    // delete message
-
     app.delete("/delete-message/:id", async (req, res) => {
       const { id } = req.params;
 
@@ -1121,23 +1122,23 @@ async function run() {
       const { id } = req.params;
 
       const query = { _id: new ObjectId(id) };
-      const query2= {parentId: id}
-      const commentToBeDeleted= await commentsCollection.findOne(query);
-      const postId= commentToBeDeleted.contentId;
-      const parentId= commentToBeDeleted.parentId;
+      const query2 = { parentId: id }
+      const commentToBeDeleted = await commentsCollection.findOne(query);
+      const postId = commentToBeDeleted.contentId;
+      const parentId = commentToBeDeleted.parentId;
       console.log(postId)
 
       try {
         const result = await commentsCollection.deleteOne(query);
-        if(result ){
-          const result2= await commentsCollection.deleteMany(query2)
+        if (result) {
+          const result2 = await commentsCollection.deleteMany(query2)
 
           // if (!result2) {
           //   return res
           //     .status(404)
           //     .send({ message: "could not delete comments", success: false });
           // }
-          const deletedComments= result2?.deletedCount +1 ;
+          const deletedComments = result2?.deletedCount + 1;
           const query3 = { _id: new ObjectId(postId) }; // Query to find the post by ID
           const forLike = await postsCollection.findOne(query3); // Finding the post
 
@@ -1146,10 +1147,10 @@ async function run() {
               .status(404)
               .send({ message: "Post not found for updating comment count", success: false });
           }
-          const result3= await postsCollection.updateOne(query3, { $inc: { comments: -deletedComments } });
-           res.send(result3);
+          const result3 = await postsCollection.updateOne(query3, { $inc: { comments: -deletedComments } });
+          res.send(result3);
         }
-        
+
       } catch (error) {
         console.error("Error deleting message:", error);
         res.status(500).send({ error: "Failed to delete message" });
@@ -1157,27 +1158,94 @@ async function run() {
     });
 
 
+
     // get - following post 
 
     app.get("/get-following-posts/:email", async (req, res) => {
-       const email = req.params.email;
+      const email = req.params.email;
 
 
-        const query ={ followerEmail : email }
-            const result = await followersCollection.find(query).toArray();
-          
-            if(result?.length){
 
-              const followingEmails=  result?.map(follower=>follower?.followingEmail );
-              const query2 = { userEmail: { $in: followingEmails } };
-              const followingPosts= await postsCollection.find(query2).toArray();
-              
-             
-              res.send(followingPosts);
-            }
-      
+      const query = { followerEmail: email }
+      const result = await followersCollection.find(query).toArray();
+
+      if (result?.length) {
+
+        const followingEmails = result?.map(follower => follower?.followingEmail);
+        const query2 = { userEmail: { $in: followingEmails } };
+        const followingPosts = await postsCollection.find(query2).toArray();
+
+
+        res.send(followingPosts);
+      }
+
 
     })
+
+    // poll
+    app.put('/posts/:id/poll/vote', async (req, res) => {
+      const { id } = req.params;
+      const { pollItem, email } = req.body;
+      const sanitizedEmail = email.replace(/\./g, '_');
+
+      try {
+
+        const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+        if (post && post.poll) {
+
+          const userVote = post.votes && post.votes[sanitizedEmail];
+
+          if (userVote === pollItem) {
+
+            const updatedPoll = post.poll.map(item => {
+              if (item.item === pollItem) {
+                item.count -= 1;
+              }
+              return item;
+            });
+            const result = await postsCollection.updateOne(
+              { _id: new ObjectId(id) },
+              {
+                $set: { poll: updatedPoll },
+                $unset: { [`votes.${sanitizedEmail}`]: "" }
+              }
+            );
+            if (result.modifiedCount > 0) {
+              const updatedPost = await postsCollection.findOne({ _id: new ObjectId(id) });
+              return res.json(updatedPost);
+            }
+          }
+          const updatedPoll = post.poll.map(item => {
+            if (item.item === userVote) {
+              item.count -= 1;
+            }
+            if (item.item === pollItem) {
+              item.count += 1;
+            }
+            return item;
+          });
+
+          const result = await postsCollection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+              $set: { poll: updatedPoll, [`votes.${sanitizedEmail}`]: pollItem }
+            }
+          );
+
+          if (result.modifiedCount > 0) {
+            const updatedPost = await postsCollection.findOne({ _id: new ObjectId(id) });
+            return res.json(updatedPost);
+          } else {
+            return res.status(404).json({ message: 'Poll not updated' });
+          }
+        } else {
+          return res.status(404).json({ message: 'Post or poll not found' });
+        }
+      } catch (err) {
+        return res.status(500).json({ message: err.message });
+      }
+    });
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
