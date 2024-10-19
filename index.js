@@ -324,7 +324,17 @@ async function run() {
     // get posts
     app.get("/main-posts", async (req, res) => {
       try {
-        const posts = await postsCollection.find().toArray();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5;
+        const skip = (page - 1) * limit;
+    
+        const posts = await postsCollection
+          .find()
+          .sort({ createdAt: -1 }) // Sort by createdAt in descending order
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+    
         res.status(200).json(posts);
       } catch (error) {
         console.error("Error fetching posts:", error);
