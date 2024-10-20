@@ -7,6 +7,13 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
 
+
+const SSLCommerzPayment = require('sslcommerz-lts')
+
+const store_id =process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASS;
+const is_live = false;
+
 // Middleware
 // app.use(cors());
 
@@ -62,6 +69,8 @@ const client = new MongoClient(uri, {
   },
 });
 
+
+
 async function run() {
   try {
     // Database collection
@@ -79,6 +88,7 @@ async function run() {
     const messagesCollection = database.collection("messages");
     const archiveDataCollection = database.collection("archiveData");
     const reportDataCollection = database.collection("reportData");
+    const paymentDataCollection = database.collection("paymentData");
     // All Operations By Nur
     // Import Route
     const SignModal = require("./Nur/SignModal")(usersCollection);
@@ -383,69 +393,7 @@ async function run() {
       res.send(result);
     });
 
-    // like
-    // app.post("/like/:id", async (req, res) => {
-    //   try {
-    //     const { id } = req.params;
-    //     const user = req.body.newuser;
-    //     console.log("User:", user);
-    //     console.log("Post ID:", id);
-
-    //     const now = Date.now();
-    //     const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
-
-    //     const query1 = { _id: new ObjectId(id) }; // Query to find the post by ID
-    //     const query3 = { postId: id, email: user.email }; // Query to check if the user liked this post
-
-    //     const forLike = await postsCollection.findOne(query1); // Finding the post
-
-    //     if (!forLike) {
-    //       return res
-    //         .status(404)
-    //         .send({ message: "Post not found", success: false });
-    //     }
-
-    //     const likesInfo = {
-    //       postId: id,
-    //       ...user,
-    //       likeTime: formattedDateTime,
-    //     };
-
-    //     const result5 = await likesCollection.findOne(query3); // Checking if the user already liked the post
-    //     const result6 = await dislikesCollection.findOne(query3); // Checking if the user already disliked the post
-
-    //     if (result5) {
-    //       // User has already liked the post, so remove the like
-    //       await likesCollection.deleteOne(query3); // Remove like from likesCollection
-    //       await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count in postsCollection
-    //       return res.send({ message: "Like removed", success: true });
-    //     }
-
-    //     if (result6) {
-    //       // If user disliked before, remove the dislike and add a like
-    //       await dislikesCollection.deleteOne(query3);
-    //       await postsCollection.updateOne(query1, {
-    //         $inc: { dislikes: -1, likes: 1 },
-    //       });
-    //       const result = await likesCollection.insertOne(likesInfo); // Add like to likesCollection
-    //       return res.send({
-    //         result,
-    //         message: "Like added and dislike removed",
-    //         success: true,
-    //       });
-    //     }
-
-    //     // If the user has not liked or disliked the post yet
-    //     await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count in postsCollection
-    //     const result = await likesCollection.insertOne(likesInfo); // Add like to likesCollection
-
-    //     res.send({ result, message: "Like added", success: true });
-    //   } catch (error) {
-    //     console.error(error);
-    //     res.status(500).send({ message: "An error occurred", success: false });
-    //   }
-    // });
-
+    
     app.post("/like/:id", async (req, res) => {
       try {
         const { id } = req.params; // Post ID from params
@@ -1245,6 +1193,119 @@ async function run() {
         return res.status(500).json({ message: err.message });
       }
     });
+
+
+    // payment Info 
+    app.post("/payment", async (req, res) => {
+      try {
+        const paymentInfo = req.body;
+        const tran_id = new ObjectId().toString(); 
+    
+        const data = {
+          total_amount: paymentInfo?.amount,
+          currency: 'BDT',
+          tran_id: tran_id,
+          success_url: `${process.env.VITE_URL}/payment/success/${tran_id}`,
+          fail_url:  `${process.env.VITE_URL}/payment/failed/${tran_id}`,
+          cancel_url: 'http://localhost:3030/cancel',
+          ipn_url: 'http://localhost:3030/ipn',
+          shipping_method: 'Courier',
+          product_name: 'Computer.',
+          product_category: 'Electronic',
+          product_profile: 'general',
+          cus_name: paymentInfo?.name,
+          cus_email: paymentInfo?.email,
+          cus_add1: paymentInfo?.address,
+          cus_city: 'Dhaka',
+          cus_state: 'Dhaka',
+          cus_postcode: '1000',
+          cus_country: 'Bangladesh',
+          cus_phone: '01711111111',
+          ship_name: 'Customer Name',
+          ship_add1: 'Dhaka',
+          ship_city: 'Dhaka',
+          ship_postcode: 1000,
+          ship_country: 'Bangladesh',
+        };
+    
+        const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+        const apiResponse = await sslcz.init(data); 
+        const GatewayPageURL = apiResponse.GatewayPageURL;
+    
+        const finalPayment = {
+          ...paymentInfo,
+          paymentStatus: false,
+          tran_id,
+        };
+    
+   
+        await paymentDataCollection.insertOne(finalPayment);
+    
+    
+        res.send({ url: GatewayPageURL });
+    
+      } catch (error) {
+        console.error("Payment initialization failed:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // payment success
+    app.post('/payment/success/:tranId', async (req, res) => {
+      try {
+        const { tranId } = req.params;
+        console.log(`Transaction ID: ${tranId}`); // For debugging
+    
+        const paymentData = await paymentDataCollection.findOne({ tran_id: tranId });
+    
+        if (!paymentData) {
+          return res.status(404).json({ message: 'Payment data not found' });
+        }
+    
+        const result = await paymentDataCollection.updateOne(
+          { tran_id: tranId },
+          { $set: { paymentStatus: true } }
+        );
+    
+        const result2 = await usersCollection.updateOne(
+          { email: paymentData.email },
+          { $set: { userType: 'premium' } }
+        );
+    
+        console.log(result, result2); // For debugging
+    
+        if (result.modifiedCount > 0 && result2.acknowledged) {
+          res.redirect(
+            `${process.env.BASE_URL}/premium-success/${encodeURIComponent(tranId)}`
+          );
+        } else {
+          res.status(400).json({ message: 'Payment update failed' });
+        }
+    
+      } catch (error) {
+        console.error('Payment success handler error:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+      }
+    });
+// payment failed
+    app.post('/payment/failed/:tranId', async (req, res) => {
+
+   
+        const { tranId } = req.params;
+
+        const result = await paymentDataCollection.deleteOne({tran_id :tranId})
+
+        if(result.deletedCount > 0 ){
+
+          res.redirect(
+            `${process.env.BASE_URL}/premium-failed/${encodeURIComponent(tranId)}`
+          );
+        }
+      
+    })
+        
+
+
 
 
     await client.db("admin").command({ ping: 1 });
