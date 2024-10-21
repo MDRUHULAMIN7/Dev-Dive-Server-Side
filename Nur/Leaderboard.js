@@ -73,6 +73,7 @@ module.exports = (postsCollection, likesCollection, commentsCollection) => {
             $group: {
               _id: "$userName",
               count: { $sum: 1 },
+              userEmail: { $first: "$userEmail"},
             },
           },
           {

@@ -6,53 +6,28 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
+const allowedOrigin = process.env.ALLOWED_ORIGINS;
+const localhostRegex = /^http:\/\/localhost:\d{4}$/;
 
 // Middleware
-// app.use(cors());
 
-// app.use(
-//   cors({
-//     origin: [
-//       "http://localhost:5173",
-//       "http://localhost:5174",
-//       "http://localhost:5175",
-//       "http://localhost:5176",
-//       "https://d...content-available-to-author-only...y.app/",
-//       "https://d...content-available-to-author-only...y.app",
-//       "https://0...content-available-to-author-only...l.app/",
-//       "https://0...content-available-to-author-only...l.app",
-//     ],
-//     credentials: true,
-//     optionSuccessStatus: 200,
-//   })
-// );
-
-const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://localhost:5176",
-    "https://d...content-available-to-author-only...y.app/",
-    "https://d...content-available-to-author-only...y.app",
-    "https://0...content-available-to-author-only...l.app/",
-    "https://0...content-available-to-author-only...l.app",
-  ],
-  credentials: true,
-  optionSuccessStatus: 200,
-};
-app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || origin === allowedOrigin || localhostRegex.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    optionSuccessStatus: 200,
+  })
+);
 app.use(express.json());
 
-// app.use((req, res, next) => {
-//   res.setHeader(
-//     "Content-Security-Policy",
-//     "default-src 'self'; script-src 'self' https://v...content-available-to-author-only...l.live; style-src 'self' 'unsafe-inline';"
-//   );
-//   next();
-// });
-
 // mongodb
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -64,8 +39,10 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Database collection
     const database = client.db("DevDive");
+
+    // Database collection
+
     const usersCollection = database.collection("users");
     const commentsCollection = database.collection("comments");
     const blogsCollection = database.collection("blogs");
@@ -78,22 +55,29 @@ async function run() {
     );
     const followersCollection = database.collection("followers");
     const chatbotquestionsCollection = database.collection("chatbotquestions");
-
     const messagesCollection = database.collection("messages");
-    const videoCallCollection = database.collection("videoCall");
+    const archiveDataCollection = database.collection("archiveData");
+    const reportDataCollection = database.collection("reportData");
 
     // All Operations By Nur
+
     // Import Route
+
     const SignModal = require("./Nur/SignModal")(usersCollection);
     const LeaderBoard = require("./Nur/LeaderBoard")(
       postsCollection,
       likesCollection,
       commentsCollection
     );
+    const ArchiveData = require("./Nur/ArchiveData")(archiveDataCollection);
+    const ReportData = require("./Nur/ReportData")(reportDataCollection);
 
     // Use Route
+
     app.use(SignModal);
     app.use(LeaderBoard);
+    app.use(ArchiveData);
+    app.use(ReportData);
 
     // End Of All Operations By Nur
 
@@ -669,7 +653,6 @@ async function run() {
         // }
         const result6 = await commentLikesCollection.findOne(query3); // Checking if the user liked the post
         if (result6) {
-       
         }
         if (result5) {
           // User has already disliked the post, so remove the dislike
@@ -677,7 +660,7 @@ async function run() {
           await commentsCollection.updateOne(query1, {
             $inc: { disLikeCount: -1 },
           }); // Decrease dislike count in postsCollection
-       
+
           return res.send({ message: "Dislike removed", success: true });
         }
 
@@ -711,6 +694,7 @@ async function run() {
     });
 
     // follow / unfollow
+
     app.post("/follow/:id", async (req, res) => {
       try {
         const { id } = req.params;
@@ -725,6 +709,7 @@ async function run() {
 
         // Fetch the post details by postId
         const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+
         if (!post) {
           return res.status(404).send({ message: "Post not found" });
         }
@@ -1053,8 +1038,6 @@ async function run() {
       }
     });
 
-    // delete message
-
     app.delete("/delete-message/:id", async (req, res) => {
       const { id } = req.params;
 
@@ -1121,63 +1104,129 @@ async function run() {
       const { id } = req.params;
 
       const query = { _id: new ObjectId(id) };
-      const query2= {parentId: id}
-      const commentToBeDeleted= await commentsCollection.findOne(query);
-      const postId= commentToBeDeleted.contentId;
-      const parentId= commentToBeDeleted.parentId;
-      console.log(postId)
+      const query2 = { parentId: id };
+      const commentToBeDeleted = await commentsCollection.findOne(query);
+      const postId = commentToBeDeleted.contentId;
+      const parentId = commentToBeDeleted.parentId;
+      console.log(postId);
 
       try {
         const result = await commentsCollection.deleteOne(query);
-        if(result ){
-          const result2= await commentsCollection.deleteMany(query2)
+        if (result) {
+          const result2 = await commentsCollection.deleteMany(query2);
 
           // if (!result2) {
           //   return res
           //     .status(404)
           //     .send({ message: "could not delete comments", success: false });
           // }
-          const deletedComments= result2?.deletedCount +1 ;
+          const deletedComments = result2?.deletedCount + 1;
           const query3 = { _id: new ObjectId(postId) }; // Query to find the post by ID
           const forLike = await postsCollection.findOne(query3); // Finding the post
 
           if (!forLike) {
-            return res
-              .status(404)
-              .send({ message: "Post not found for updating comment count", success: false });
+            return res.status(404).send({
+              message: "Post not found for updating comment count",
+              success: false,
+            });
           }
-          const result3= await postsCollection.updateOne(query3, { $inc: { comments: -deletedComments } });
-           res.send(result3);
+          const result3 = await postsCollection.updateOne(query3, {
+            $inc: { comments: -deletedComments },
+          });
+          res.send(result3);
         }
-        
       } catch (error) {
         console.error("Error deleting message:", error);
         res.status(500).send({ error: "Failed to delete message" });
       }
     });
 
-
-    // get - following post 
+    // get - following post
 
     app.get("/get-following-posts/:email", async (req, res) => {
-       const email = req.params.email;
+      const email = req.params.email;
 
+      const query = { followerEmail: email };
+      const result = await followersCollection.find(query).toArray();
 
-        const query ={ followerEmail : email }
-            const result = await followersCollection.find(query).toArray();
-          
-            if(result?.length){
+      if (result?.length) {
+        const followingEmails = result?.map(
+          (follower) => follower?.followingEmail
+        );
+        const query2 = { userEmail: { $in: followingEmails } };
+        const followingPosts = await postsCollection.find(query2).toArray();
 
-              const followingEmails=  result?.map(follower=>follower?.followingEmail );
-              const query2 = { userEmail: { $in: followingEmails } };
-              const followingPosts= await postsCollection.find(query2).toArray();
-              
-             
-              res.send(followingPosts);
+        res.send(followingPosts);
+      }
+    });
+
+    // poll
+    app.put("/posts/:id/poll/vote", async (req, res) => {
+      const { id } = req.params;
+      const { pollItem, email } = req.body;
+      const sanitizedEmail = email.replace(/\./g, "_");
+
+      try {
+        const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+        if (post && post.poll) {
+          const userVote = post.votes && post.votes[sanitizedEmail];
+
+          if (userVote === pollItem) {
+            const updatedPoll = post.poll.map((item) => {
+              if (item.item === pollItem) {
+                item.count -= 1;
+              }
+              return item;
+            });
+            const result = await postsCollection.updateOne(
+              { _id: new ObjectId(id) },
+              {
+                $set: { poll: updatedPoll },
+                $unset: { [`votes.${sanitizedEmail}`]: "" },
+              }
+            );
+            if (result.modifiedCount > 0) {
+              const updatedPost = await postsCollection.findOne({
+                _id: new ObjectId(id),
+              });
+              return res.json(updatedPost);
             }
-      
+          }
+          const updatedPoll = post.poll.map((item) => {
+            if (item.item === userVote) {
+              item.count -= 1;
+            }
+            if (item.item === pollItem) {
+              item.count += 1;
+            }
+            return item;
+          });
 
-    })
+          const result = await postsCollection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+              $set: {
+                poll: updatedPoll,
+                [`votes.${sanitizedEmail}`]: pollItem,
+              },
+            }
+          );
+
+          if (result.modifiedCount > 0) {
+            const updatedPost = await postsCollection.findOne({
+              _id: new ObjectId(id),
+            });
+            return res.json(updatedPost);
+          } else {
+            return res.status(404).json({ message: "Poll not updated" });
+          }
+        } else {
+          return res.status(404).json({ message: "Post or poll not found" });
+        }
+      } catch (err) {
+        return res.status(500).json({ message: err.message });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
