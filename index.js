@@ -3,27 +3,35 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { format } = require("date-fns");
 const app = express();
-const { MongoClient, ServerApiVersion, ObjectId, CURSOR_FLAGS } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
+const allowedOrigin = process.env.ALLOWED_ORIGINS;
+const localhostRegex = /^http:\/\/localhost:\d{4}$/;
+const SSLCommerzPayment = require('sslcommerz-lts')
+const store_id =process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASS;
+const is_live = false;
 
 // Middleware
-app.use(cors());
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://localhost:5176",
-      "https://devdive1.netlify.app/",
-    ],
+    origin: (origin, callback) => {
+      if (!origin || origin === allowedOrigin || localhostRegex.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    optionSuccessStatus: 200,
   })
 );
 app.use(express.json());
 
 // mongodb
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -33,33 +41,50 @@ const client = new MongoClient(uri, {
   },
 });
 
+
+
 async function run() {
   try {
-    // Database collection
     const database = client.db("DevDive");
+
+    // Database collection
+
     const usersCollection = database.collection("users");
     const commentsCollection = database.collection("comments");
     const blogsCollection = database.collection("blogs");
     const postsCollection = database.collection("posts");
     const likesCollection = database.collection("likes");
     const dislikesCollection = database.collection("dislikes");
-    const commentLikesCollection = database.collection("commentLikeCollection")
-    const commentDislikesCollection = database.collection("commentDislikeCollection")
+    const commentLikesCollection = database.collection("commentLikeCollection");
+    const commentDislikesCollection = database.collection(
+      "commentDislikeCollection"
+    );
     const followersCollection = database.collection("followers");
     const chatbotquestionsCollection = database.collection("chatbotquestions");
+    const messagesCollection = database.collection("messages");
+    const archiveDataCollection = database.collection("archiveData");
+    const reportDataCollection = database.collection("reportData");
+    const paymentDataCollection = database.collection("paymentData");
 
     // All Operations By Nur
+
     // Import Route
+
     const SignModal = require("./Nur/SignModal")(usersCollection);
     const LeaderBoard = require("./Nur/LeaderBoard")(
       postsCollection,
       likesCollection,
       commentsCollection
     );
+    const ArchiveData = require("./Nur/ArchiveData")(archiveDataCollection);
+    const ReportData = require("./Nur/ReportData")(reportDataCollection);
 
     // Use Route
+
     app.use(SignModal);
     app.use(LeaderBoard);
+    app.use(ArchiveData);
+    app.use(ReportData);
 
     // End Of All Operations By Nur
 
@@ -149,6 +174,7 @@ async function run() {
           userEmail,
           username,
           profilePicture,
+          poll,
         } = req.body;
 
         // Insert the post into MongoDB
@@ -161,8 +187,10 @@ async function run() {
           userEmail,
           username,
           profilePicture,
+          poll,
           likes: 0,
           dislikes: 0,
+          comments: 0,
           createdAt: new Date(), // Optional: To track when the post was created
         });
 
@@ -181,6 +209,7 @@ async function run() {
           contentId,
           comment,
           userName,
+          userEmail,
           userImage,
           likeCount,
           disLikeCount,
@@ -193,6 +222,7 @@ async function run() {
           contentId,
           comment,
           userName,
+          userEmail,
           userImage,
           likeCount,
           disLikeCount,
@@ -200,11 +230,26 @@ async function run() {
           parentId,
           createdAt: new Date(), // Optional: To track when the post was created
         });
+        const query1 = { _id: new ObjectId(contentId) };
+        const findComment = await postsCollection.findOne(query1); // Finding the post
 
+        if (!findComment) {
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
+        }
+        const updateComment = await postsCollection.updateOne(query1, {
+          $inc: { comments: 1 },
+        });
+        if (!updateComment) {
+          return res
+            .status(404)
+            .send({ message: "commentCount was not updated", success: false });
+        }
         res.status(200).send(result);
       } catch (error) {
-        console.error("Error adding post:", error);
-        res.status(500).json({ message: "Failed to add post" });
+        console.error("Error adding comment:", error);
+        res.status(500).json({ message: "Failed to add comment" });
       }
     });
     app.post("/postReply", async (req, res) => {
@@ -213,6 +258,7 @@ async function run() {
           contentId,
           reply,
           userName,
+          userEmail,
           userImage,
           likeCount,
           disLikeCount,
@@ -225,6 +271,7 @@ async function run() {
           contentId,
           reply,
           userName,
+          userEmail,
           userImage,
           likeCount,
           disLikeCount,
@@ -232,11 +279,26 @@ async function run() {
           parentId,
           createdAt: new Date(), // Optional: To track when the post was created
         });
+        const query1 = { _id: new ObjectId(contentId) };
+        const findComment = await postsCollection.findOne(query1); // Finding the post
 
+        if (!findComment) {
+          return res
+            .status(404)
+            .send({ message: "Post not found", success: false });
+        }
+        const updateComment = await postsCollection.updateOne(query1, {
+          $inc: { comments: 1 },
+        });
+        if (!updateComment) {
+          return res
+            .status(404)
+            .send({ message: "commentCount was not updated", success: false });
+        }
         res.status(200).send(result);
       } catch (error) {
-        console.error("Error adding post:", error);
-        res.status(500).json({ message: "Failed to add post" });
+        console.error("Error adding reply:", error);
+        res.status(500).json({ message: "Failed to add reply" });
       }
     });
 
@@ -249,6 +311,13 @@ async function run() {
         parentId: null,
       };
       const result = await commentsCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.get("/getPost/:id", async (req, res) => {
+      const id = req.params.id;
+      // const query = { contentId: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
+      const result = await postsCollection.findOne(query);
       res.send(result);
     });
     app.get("/getReplies/:id", async (req, res) => {
@@ -304,68 +373,73 @@ async function run() {
       res.send(result);
     });
 
-    // like
+
     app.post("/like/:id", async (req, res) => {
       try {
-        const { id } = req.params;
-        const user = req.body.newuser;
-        console.log("User:", user);
-        console.log("Post ID:", id);
+        const { id } = req.params; // Post ID from params
+        const user = req.body.newUser; // User info from request body
 
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
 
-        const query1 = { _id: new ObjectId(id) }; // Query to find the post by ID
-        const query3 = { postId: id, email: user.email }; // Query to check if the user liked this post
+        const query1 = { _id: new ObjectId(id) }; // Find the post by ID
+        const query3 = { postId: id, email: user.email }; // Check if the user interacted with this post
 
-        const forLike = await postsCollection.findOne(query1); // Finding the post
+        const post = await postsCollection.findOne(query1); // Retrieve the post
 
-        if (!forLike) {
+        if (!post) {
           return res
             .status(404)
             .send({ message: "Post not found", success: false });
         }
 
-        const likesInfo = {
-          postId: id,
-          ...user,
-          likeTime: formattedDateTime,
-        };
-
-        const result5 = await likesCollection.findOne(query3); // Checking if the user already liked the post
-        const result6 = await dislikesCollection.findOne(query3); // Checking if the user already disliked the post
+        const result5 = await likesCollection.findOne(query3); // Check if the user liked the post
+        const result6 = await dislikesCollection.findOne(query3); // Check if the user disliked the post
 
         if (result5) {
-          // User has already liked the post, so remove the like
-          await likesCollection.deleteOne(query3); // Remove like from likesCollection
-          await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count in postsCollection
+          // If the user already liked the post, remove the like
+          await likesCollection.deleteOne(query3); // Remove like
+          await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count
           return res.send({ message: "Like removed", success: true });
         }
 
         if (result6) {
-          // If user disliked before, remove the dislike and add a like
-          await dislikesCollection.deleteOne(query3);
+          // If the user previously disliked, remove the dislike and add a like
+          await dislikesCollection.deleteOne(query3); // Remove dislike
           await postsCollection.updateOne(query1, {
             $inc: { dislikes: -1, likes: 1 },
-          });
-          const result = await likesCollection.insertOne(likesInfo); // Add like to likesCollection
+          }); // Update counts
+
+          const likeInfo = {
+            postId: id,
+            ...user,
+            likeTime: formattedDateTime,
+            type: "like",
+          };
+          await likesCollection.insertOne(likeInfo); // Add like
           return res.send({
-            result,
             message: "Like added and dislike removed",
             success: true,
           });
         }
 
-        // If the user has not liked or disliked the post yet
-        await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count in postsCollection
-        const result = await likesCollection.insertOne(likesInfo); // Add like to likesCollection
+        // If the user hasn't liked or disliked yet, add a like
+        await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count
+        const likeInfo = {
+          postId: id,
+          ...user,
+          likeTime: formattedDateTime,
+          type: "like",
+        };
+        await likesCollection.insertOne(likeInfo); // Add like to collection
 
-        res.send({ result, message: "Like added", success: true });
+        res.send({ message: "Like added", success: true });
       } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "An error occurred", success: false });
+        console.error("Error in like operation:", error); // Log any errors
+        res.status(500).send({ message: "An error occurred", success: false }); // Return error response
       }
     });
+
     app.post("/commentLike/:id", async (req, res) => {
       try {
         const { id } = req.params; // comment ID
@@ -400,7 +474,9 @@ async function run() {
         if (result5) {
           // User has already liked the post, so remove the like
           await commentLikesCollection.deleteOne(query3); // Remove like from likesCollection
-          await commentsCollection.updateOne(query1, { $inc: { likeCount: -1 } }); // Decrease like count in postsCollection
+          await commentsCollection.updateOne(query1, {
+            $inc: { likeCount: -1 },
+          }); // Decrease like count in postsCollection
           return res.send({ message: "Like removed", success: true });
         }
 
@@ -433,7 +509,7 @@ async function run() {
     app.post("/dislike/:id", async (req, res) => {
       try {
         const { id } = req.params; // Post ID
-        const user = req.body.newuser; // User information from request body
+        const user = req.body.newUser; // User information from request body
 
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
@@ -502,7 +578,7 @@ async function run() {
         const query3 = { commentId: id, email: user.email }; // Query to check if the user disliked this post
 
         const forLike = await commentsCollection.findOne(query1); // Finding the post
-        console.log("comment found")
+        console.log("comment found");
 
         if (!forLike) {
           return res
@@ -518,17 +594,18 @@ async function run() {
 
         const result5 = await commentDislikesCollection.findOne(query3); // Checking if the user already disliked the post
         // if(result5){
-          console.log(result5)
+        console.log(result5);
         // }
         const result6 = await commentLikesCollection.findOne(query3); // Checking if the user liked the post
-        if(result6){
-          console.log("alredy disliked")
+        if (result6) {
         }
         if (result5) {
           // User has already disliked the post, so remove the dislike
           await commentDislikesCollection.deleteOne(query3); // Remove dislike from commentDislikesCollection
-          await commentsCollection.updateOne(query1, { $inc: { disLikeCount: -1 } }); // Decrease dislike count in postsCollection
-          console.log("dislike removed")
+          await commentsCollection.updateOne(query1, {
+            $inc: { disLikeCount: -1 },
+          }); // Decrease dislike count in postsCollection
+
           return res.send({ message: "Dislike removed", success: true });
         }
 
@@ -538,7 +615,9 @@ async function run() {
           await commentsCollection.updateOne(query1, {
             $inc: { likeCount: -1, disLikeCount: 1 },
           });
-          const result = await commentDislikesCollection.insertOne(dislikesInfo);
+          const result = await commentDislikesCollection.insertOne(
+            dislikesInfo
+          );
           return res.send({
             result,
             message: "Dislike added and like removed",
@@ -547,7 +626,9 @@ async function run() {
         }
 
         // If the user has not liked or disliked the post yet
-        await commentsCollection.updateOne(query1, { $inc: { disLikeCount: 1 } }); // Increase dislike count in postsCollection
+        await commentsCollection.updateOne(query1, {
+          $inc: { disLikeCount: 1 },
+        }); // Increase dislike count in postsCollection
         const result = await commentDislikesCollection.insertOne(dislikesInfo); // Add dislike to commentDislikesCollection
 
         res.send({ result, message: "Dislike added", success: true });
@@ -564,7 +645,10 @@ async function run() {
         const { id } = req.params;
         const user = req.body.newuser;
 
-        // Prepare follow time
+        if (!user || !user.email) {
+          return res.status(400).send({ message: "Invalid user data" });
+        }
+
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
 
@@ -580,21 +664,39 @@ async function run() {
           postId: id,
           followerEmail: user.email,
         };
+
         const existingFollow = await followersCollection.findOne(
           queryForExistingFollow
         );
-
-        const queryForPostOwner = { email: post.userEmail }; // Find the post owner's details
+        const queryForPostOwner = { email: post.userEmail };
 
         if (existingFollow) {
           // Unfollow logic: delete the follow record and decrement follower count
-          await Promise.all([
-            followersCollection.deleteOne(queryForExistingFollow),
-            usersCollection.updateOne(queryForPostOwner, {
-              $inc: { followers: -1 },
-            }), // Correct field name
-          ]);
-          return res.status(200).send({ message: "Unfollowed successfully" });
+          const session = client.startSession(); // Start a session to ensure atomicity
+          try {
+            session.startTransaction();
+
+            await followersCollection.deleteOne(queryForExistingFollow, {
+              session,
+            });
+            await usersCollection.updateOne(
+              queryForPostOwner,
+              {
+                $inc: {
+                  followers: -1,
+                },
+              },
+              { session }
+            );
+
+            await session.commitTransaction();
+            return res.status(200).send({ message: "Unfollowed successfully" });
+          } catch (error) {
+            await session.abortTransaction();
+            throw error;
+          } finally {
+            session.endSession();
+          }
         } else {
           // Follow logic: insert a new follower record and increment follower count
           const followInfo = {
@@ -608,11 +710,25 @@ async function run() {
             followTime: formattedDateTime,
           };
 
-          await followersCollection.insertOne(followInfo);
-          await usersCollection.updateOne(queryForPostOwner, {
-            $inc: { followers: 1 },
-          }); // Correct field name
-          return res.status(200).send({ message: "Followed successfully" });
+          const session = client.startSession(); // Start a session for follow logic
+          try {
+            session.startTransaction();
+
+            await followersCollection.insertOne(followInfo, { session });
+            await usersCollection.updateOne(
+              queryForPostOwner,
+              { $inc: { followers: 1 } },
+              { session }
+            );
+
+            await session.commitTransaction();
+            return res.status(200).send({ message: "Followed successfully" });
+          } catch (error) {
+            await session.abortTransaction();
+            throw error;
+          } finally {
+            session.endSession();
+          }
         }
       } catch (error) {
         console.error("Error in /follow/:id:", error);
@@ -629,38 +745,43 @@ async function run() {
       res.send(result);
     });
 
-    // followers in a list
-
+    // Fetch all followers grouped by following user
     app.get("/followers/all", async (req, res) => {
       try {
         const followersList = await followersCollection
           .aggregate([
             {
               $group: {
-                _id: "$following",
+                _id: "$followingEmail", // Group by followingEmail
+                followingName: { $first: "$following" }, // Get the following user's name
+                followingPhoto: { $first: "$followingPhoto" }, // Get the following user's photo
                 followers: {
                   $push: {
-                    postBy: "$postBy",
-                    name: "$name",
-                    email: "$email",
-                    photo: "$photo",
-                    followTime: "$followTime",
+                    name: "$followerName", // Follower's name
+                    email: "$followerEmail", // Follower's email
+                    photo: "$followerPhoto", // Follower's photo
+                    time: "$followTime", // Follow time
                   },
                 },
               },
             },
             {
               $project: {
-                _id: 0,
-                user: "$_id",
-                followers: 1,
+                _id: 0, // Exclude _id
+                email: "$_id", // Rename _id to email (followingEmail)
+                name: "$followingName", // Include the following user's name
+                photo: "$followingPhoto", // Include the following user's photo
+                followers: 1, // Include followers array
               },
             },
           ])
           .toArray();
-        res.send(followersList);
+
+        // Send the resulting list as JSON
+        res.status(200).json(followersList);
       } catch (error) {
-        res.send({ error: "Server error occurred" });
+        console.error("Error fetching followers:", error); // Log the error for debugging
+        res.status(500).json({ error: "Server error occurred" }); // Send a 500 status on error
       }
     });
 
@@ -696,31 +817,6 @@ async function run() {
       }
     });
 
-    // search 
-
-    app.get('/posts/search/post', async (req, res) => {
-      const search = req.query.search;
-  
-      if (!search) {
-          return res.status(400).send({ error: 'Search query is required' });
-      }
-  
-      // console.log(`Search query: ${search}`);
-  
-      const query = { title: { $regex: search, $options: 'i' } };
-  
-      try {
-          const result = await postsCollection.find(query).toArray();
-          res.send(result);
-      } catch (error) {
-          console.error('Error retrieving posts:', error);
-          res.status(500).send({ error: 'An error occurred while searching for posts' });
-      }
-  });
-  
-
-
-    
     // search
 
     app.get("/posts/search/post", async (req, res) => {
@@ -745,26 +841,449 @@ async function run() {
       }
     });
 
+    // search
 
-    // update user-info 
+    app.get("/posts/search/post", async (req, res) => {
+      const search = req.query.search;
+
+      if (!search) {
+        return res.status(400).send({ error: "Search query is required" });
+      }
+
+      // console.log(`Search query: ${search}`);
+
+      const query = { title: { $regex: search, $options: "i" } };
+
+      try {
+        const result = await postsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error retrieving posts:", error);
+        res
+          .status(500)
+          .send({ error: "An error occurred while searching for posts" });
+      }
+    });
+
+    // update user-info
 
     app.put("/users-update/:email", async (req, res) => {
       const { email } = req.params;
-      const  updatedUSerInfo = req.body;
+      const updatedUSerInfo = req.body;
 
-    const   updateDoc ={
-       $set: {
-         name: updatedUSerInfo.name,
-        photoUrl: updatedUSerInfo.photoUrl,
-        coverPhoto: updatedUSerInfo.coverPhoto,
-       },
-     };
-    
- const query = {email:email}
- const result = await usersCollection.updateOne(query,updateDoc)
- res.send(result)
+      const updateDoc = {
+        $set: {
+          name: updatedUSerInfo.name,
+          photoUrl: updatedUSerInfo.photoUrl,
+          coverPhoto: updatedUSerInfo.coverPhoto,
+        },
+      };
 
-       } )
+      const query = { email: email };
+      const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    //  delete user-post
+
+    app.delete("/user-delete-post/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await postsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // get popular post
+
+    app.get("/get-popular-posts", async (req, res) => {
+      try {
+        const result = await postsCollection
+          .aggregate([
+            {
+              $addFields: {
+                totalEngagement: { $add: ["$likes", "$comments"] },
+              },
+            },
+            {
+              $sort: { totalEngagement: -1 },
+            },
+          ])
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("An error occurred while fetching posts");
+      }
+    });
+
+    // Ruhul Amin
+
+    // create jwt token
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1d",
+      });
+
+      res.send({ token });
+    });
+
+    // get admin user data
+
+    app.get("/users/admin/:email", async (req, res) => {
+      const email = req.params.email;
+
+      const query = { email: email };
+
+      try {
+        const user = await usersCollection.findOne(query);
+
+        if (user) {
+          const admin = user.role === "admin";
+          return res.send({ admin });
+        } else {
+          return res.send({ admin: false });
+        }
+      } catch (error) {
+        return res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+    // End Ruhul Amin
+
+    // post message
+
+    app.post("/messages", async (req, res) => {
+      const messageInfo = req.body;
+
+      const result = await messagesCollection.insertOne(messageInfo);
+      res.send(result);
+    });
+    // get -message for user
+    app.post("/get-messages", async (req, res) => {
+      const { sender, reciver } = req.body;
+
+      const query = {
+        $or: [
+          { senderEmail: sender?.email, receiverEmail: reciver?.email },
+          { senderEmail: reciver?.email, receiverEmail: sender?.email },
+        ],
+      };
+
+      try {
+        const result = await messagesCollection
+          .find(query)
+          .sort({ timestamp: 1 })
+          .toArray(); // Sort by time if needed
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+        res.status(500).send({ error: "Failed to fetch messages" });
+      }
+    });
+
+    app.delete("/delete-message/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const query = { _id: new ObjectId(id) };
+
+      try {
+        const result = await messagesCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting message:", error);
+        res.status(500).send({ error: "Failed to delete message" });
+      }
+    });
+
+    // edit message
+
+    app.put("/edit/:id", async (req, res) => {
+      const { id } = req.params;
+      const { message } = req.body;
+
+      const query = { _id: new ObjectId(id) };
+
+      // Find the message by ID and update it
+      const updatedMessage = await messagesCollection.findOne(query);
+
+      if (!updatedMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      const updatedDoc = {
+        $set: {
+          message: message,
+        },
+      };
+      const result = await messagesCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
+
+    //edit comment
+    app.put("/editComment/:id", async (req, res) => {
+      const { id } = req.params;
+      const { comment } = req.body;
+
+      const query = { _id: new ObjectId(id) };
+
+      // Find the message by ID and update it
+      const updatedMessage = await commentsCollection.findOne(query);
+
+      if (!updatedMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      const updatedDoc = {
+        $set: {
+          comment: comment,
+        },
+      };
+      const result = await commentsCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
+
+    //delete Comment
+    app.delete("/deleteComment/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const query = { _id: new ObjectId(id) };
+      const query2 = { parentId: id };
+      const commentToBeDeleted = await commentsCollection.findOne(query);
+      const postId = commentToBeDeleted.contentId;
+      const parentId = commentToBeDeleted.parentId;
+      console.log(postId);
+
+      try {
+        const result = await commentsCollection.deleteOne(query);
+        if (result) {
+          const result2 = await commentsCollection.deleteMany(query2);
+
+          // if (!result2) {
+          //   return res
+          //     .status(404)
+          //     .send({ message: "could not delete comments", success: false });
+          // }
+          const deletedComments = result2?.deletedCount + 1;
+          const query3 = { _id: new ObjectId(postId) }; // Query to find the post by ID
+          const forLike = await postsCollection.findOne(query3); // Finding the post
+
+          if (!forLike) {
+            return res.status(404).send({
+              message: "Post not found for updating comment count",
+              success: false,
+            });
+          }
+          const result3 = await postsCollection.updateOne(query3, {
+            $inc: { comments: -deletedComments },
+          });
+          res.send(result3);
+        }
+      } catch (error) {
+        console.error("Error deleting message:", error);
+        res.status(500).send({ error: "Failed to delete message" });
+      }
+    });
+
+
+    // get - following post
+
+    app.get("/get-following-posts/:email", async (req, res) => {
+      const email = req.params.email;
+
+      const query = { followerEmail: email };
+      const result = await followersCollection.find(query).toArray();
+
+      if (result?.length) {
+        const followingEmails = result?.map(
+          (follower) => follower?.followingEmail
+        );
+        const query2 = { userEmail: { $in: followingEmails } };
+        const followingPosts = await postsCollection.find(query2).toArray();
+
+        res.send(followingPosts);
+      }
+    });
+
+    // poll
+    app.put("/posts/:id/poll/vote", async (req, res) => {
+      const { id } = req.params;
+      const { pollItem, email } = req.body;
+      const sanitizedEmail = email.replace(/\./g, "_");
+
+      try {
+        const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+        if (post && post.poll) {
+          const userVote = post.votes && post.votes[sanitizedEmail];
+
+          if (userVote === pollItem) {
+            const updatedPoll = post.poll.map((item) => {
+              if (item.item === pollItem) {
+                item.count -= 1;
+              }
+              return item;
+            });
+            const result = await postsCollection.updateOne(
+              { _id: new ObjectId(id) },
+              {
+                $set: { poll: updatedPoll },
+                $unset: { [`votes.${sanitizedEmail}`]: "" },
+              }
+            );
+            if (result.modifiedCount > 0) {
+              const updatedPost = await postsCollection.findOne({
+                _id: new ObjectId(id),
+              });
+              return res.json(updatedPost);
+            }
+          }
+          const updatedPoll = post.poll.map((item) => {
+            if (item.item === userVote) {
+              item.count -= 1;
+            }
+            if (item.item === pollItem) {
+              item.count += 1;
+            }
+            return item;
+          });
+
+          const result = await postsCollection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+              $set: {
+                poll: updatedPoll,
+                [`votes.${sanitizedEmail}`]: pollItem,
+              },
+            }
+          );
+
+          if (result.modifiedCount > 0) {
+            const updatedPost = await postsCollection.findOne({
+              _id: new ObjectId(id),
+            });
+            return res.json(updatedPost);
+          } else {
+            return res.status(404).json({ message: "Poll not updated" });
+          }
+        } else {
+          return res.status(404).json({ message: "Post or poll not found" });
+        }
+      } catch (err) {
+        return res.status(500).json({ message: err.message });
+      }
+    });
+
+
+    // payment Info
+    app.post("/payment", async (req, res) => {
+      try {
+        const paymentInfo = req.body;
+        const tran_id = new ObjectId().toString();
+
+        const data = {
+          total_amount: paymentInfo?.amount,
+          currency: "BDT",
+          tran_id: tran_id,
+          success_url: `${process.env.VITE_URL}/payment/success/${tran_id}`,
+          fail_url: `${process.env.VITE_URL}/payment/failed/${tran_id}`,
+          cancel_url: "http://localhost:3030/cancel",
+          ipn_url: "http://localhost:3030/ipn",
+          shipping_method: "Courier",
+          product_name: "Computer.",
+          product_category: "Electronic",
+          product_profile: "general",
+          cus_name: paymentInfo?.name,
+          cus_email: paymentInfo?.email,
+          cus_add1: paymentInfo?.address,
+          cus_city: "Dhaka",
+          cus_state: "Dhaka",
+          cus_postcode: "1000",
+          cus_country: "Bangladesh",
+          cus_phone: "01711111111",
+          ship_name: "Customer Name",
+          ship_add1: "Dhaka",
+          ship_city: "Dhaka",
+          ship_postcode: 1000,
+          ship_country: "Bangladesh",
+        };
+
+        const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+        const apiResponse = await sslcz.init(data);
+        const GatewayPageURL = apiResponse.GatewayPageURL;
+
+        const finalPayment = {
+          ...paymentInfo,
+          paymentStatus: false,
+          tran_id,
+        };
+
+
+        await paymentDataCollection.insertOne(finalPayment);
+
+
+        res.send({ url: GatewayPageURL });
+
+      } catch (error) {
+        console.error("Payment initialization failed:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // payment success
+    app.post('/payment/success/:tranId', async (req, res) => {
+      try {
+        const { tranId } = req.params;
+        console.log(`Transaction ID: ${tranId}`); // For debugging
+
+        const paymentData = await paymentDataCollection.findOne({ tran_id: tranId });
+
+        if (!paymentData) {
+          return res.status(404).json({ message: 'Payment data not found' });
+        }
+
+        const result = await paymentDataCollection.updateOne(
+          { tran_id: tranId },
+          { $set: { paymentStatus: true } }
+        );
+
+        const result2 = await usersCollection.updateOne(
+          { email: paymentData.email },
+          { $set: { userType: 'premium' } }
+        );
+
+        console.log(result, result2); // For debugging
+
+        if (result.modifiedCount > 0 && result2.acknowledged) {
+          res.redirect(
+            `${process.env.BASE_URL}/premium-success/${encodeURIComponent(tranId)}`
+          );
+        } else {
+          res.status(400).json({ message: 'Payment update failed' });
+        }
+
+      } catch (error) {
+        console.error('Payment success handler error:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+      }
+    });
+// payment failed
+    app.post('/payment/failed/:tranId', async (req, res) => {
+
+
+        const { tranId } = req.params;
+
+        const result = await paymentDataCollection.deleteOne({tran_id :tranId})
+
+        if(result.deletedCount > 0 ){
+
+          res.redirect(
+            `${process.env.BASE_URL}/premium-failed/${encodeURIComponent(tranId)}`
+          );
+        }
+
+    })
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
@@ -778,7 +1297,6 @@ run().catch(console.dir);
 app.get("/", (req, res) => {
   res.send("DevDive is  on the way");
 });
-
 
 app.listen(port, () => {
   console.log(`DevDive is running on:${port}`);

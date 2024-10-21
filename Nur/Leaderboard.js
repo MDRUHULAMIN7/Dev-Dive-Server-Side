@@ -12,7 +12,7 @@ module.exports = (postsCollection, likesCollection, commentsCollection) => {
       const posts = await postsQuery.toArray();
       res.status(200).json(posts);
     } catch (error) {
-      console.error("Error fetching posts:", error);
+      console.error("Error fetching posts for LeaderBoard:", error);
       res.status(500).json({ message: "Failed to fetch posts" });
     }
   });
@@ -73,6 +73,7 @@ module.exports = (postsCollection, likesCollection, commentsCollection) => {
             $group: {
               _id: "$userName",
               count: { $sum: 1 },
+              userEmail: { $first: "$userEmail"},
             },
           },
           {
