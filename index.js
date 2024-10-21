@@ -393,7 +393,7 @@ async function run() {
       res.send(result);
     });
 
-    
+
     app.post("/like/:id", async (req, res) => {
       try {
         const { id } = req.params; // Post ID from params
@@ -1107,7 +1107,7 @@ async function run() {
 
 
 
-    // get - following post 
+    // get - following post
 
     app.get("/get-following-posts/:email", async (req, res) => {
       const email = req.params.email;
@@ -1195,55 +1195,55 @@ async function run() {
     });
 
 
-    // payment Info 
+    // payment Info
     app.post("/payment", async (req, res) => {
       try {
         const paymentInfo = req.body;
-        const tran_id = new ObjectId().toString(); 
-    
+        const tran_id = new ObjectId().toString();
+
         const data = {
           total_amount: paymentInfo?.amount,
-          currency: 'BDT',
+          currency: "BDT",
           tran_id: tran_id,
           success_url: `${process.env.VITE_URL}/payment/success/${tran_id}`,
-          fail_url: `http://localhost:5000/payment/failed/${tran_id}`,
-          cancel_url: 'http://localhost:3030/cancel',
-          ipn_url: 'http://localhost:3030/ipn',
-          shipping_method: 'Courier',
-          product_name: 'Computer.',
-          product_category: 'Electronic',
-          product_profile: 'general',
+          fail_url: `${process.env.VITE_URL}/payment/failed/${tran_id}`,
+          cancel_url: "http://localhost:3030/cancel",
+          ipn_url: "http://localhost:3030/ipn",
+          shipping_method: "Courier",
+          product_name: "Computer.",
+          product_category: "Electronic",
+          product_profile: "general",
           cus_name: paymentInfo?.name,
           cus_email: paymentInfo?.email,
           cus_add1: paymentInfo?.address,
-          cus_city: 'Dhaka',
-          cus_state: 'Dhaka',
-          cus_postcode: '1000',
-          cus_country: 'Bangladesh',
-          cus_phone: '01711111111',
-          ship_name: 'Customer Name',
-          ship_add1: 'Dhaka',
-          ship_city: 'Dhaka',
+          cus_city: "Dhaka",
+          cus_state: "Dhaka",
+          cus_postcode: "1000",
+          cus_country: "Bangladesh",
+          cus_phone: "01711111111",
+          ship_name: "Customer Name",
+          ship_add1: "Dhaka",
+          ship_city: "Dhaka",
           ship_postcode: 1000,
-          ship_country: 'Bangladesh',
+          ship_country: "Bangladesh",
         };
-    
+
         const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-        const apiResponse = await sslcz.init(data); 
+        const apiResponse = await sslcz.init(data);
         const GatewayPageURL = apiResponse.GatewayPageURL;
-    
+
         const finalPayment = {
           ...paymentInfo,
           paymentStatus: false,
           tran_id,
         };
-    
-   
+
+
         await paymentDataCollection.insertOne(finalPayment);
-    
-    
+
+
         res.send({ url: GatewayPageURL });
-    
+
       } catch (error) {
         console.error("Payment initialization failed:", error);
         res.status(500).json({ message: "Internal Server Error" });
@@ -1255,25 +1255,25 @@ async function run() {
       try {
         const { tranId } = req.params;
         console.log(`Transaction ID: ${tranId}`); // For debugging
-    
+
         const paymentData = await paymentDataCollection.findOne({ tran_id: tranId });
-    
+
         if (!paymentData) {
           return res.status(404).json({ message: 'Payment data not found' });
         }
-    
+
         const result = await paymentDataCollection.updateOne(
           { tran_id: tranId },
           { $set: { paymentStatus: true } }
         );
-    
+
         const result2 = await usersCollection.updateOne(
           { email: paymentData.email },
           { $set: { userType: 'premium' } }
         );
-    
+
         console.log(result, result2); // For debugging
-    
+
         if (result.modifiedCount > 0 && result2.acknowledged) {
           res.redirect(
             `${process.env.BASE_URL}/premium-success/${encodeURIComponent(tranId)}`
@@ -1281,7 +1281,7 @@ async function run() {
         } else {
           res.status(400).json({ message: 'Payment update failed' });
         }
-    
+
       } catch (error) {
         console.error('Payment success handler error:', error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -1290,7 +1290,7 @@ async function run() {
 // payment failed
     app.post('/payment/failed/:tranId', async (req, res) => {
 
-   
+
         const { tranId } = req.params;
 
         const result = await paymentDataCollection.deleteOne({tran_id :tranId})
@@ -1301,9 +1301,9 @@ async function run() {
             `${process.env.BASE_URL}/premium-failed/${encodeURIComponent(tranId)}`
           );
         }
-      
+
     })
-        
+
 
 
 
