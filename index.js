@@ -1206,7 +1206,7 @@ async function run() {
           currency: 'BDT',
           tran_id: tran_id,
           success_url: `${process.env.VITE_URL}/payment/success/${tran_id}`,
-          fail_url:  `${process.env.VITE_URL}/payment/failed/${tran_id}`,
+          fail_url: `http://localhost:5000/payment/failed/${tran_id}`,
           cancel_url: 'http://localhost:3030/cancel',
           ipn_url: 'http://localhost:3030/ipn',
           shipping_method: 'Courier',
