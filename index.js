@@ -926,17 +926,18 @@ async function run() {
 
     app.get("/get-popular-posts", async (req, res) => {
       const { page = 1, limit = 10 } = req.query; // default page=1, limit=10
-      
+    
       try {
         const result = await postsCollection
           .aggregate([
             {
               $addFields: {
-                totalEngagement: { $add: ["$likes", "$comments"] },
+                totalLikes: { $size: "$likes" }, // Count the number of likes in the array
+                totalEngagement: { $add: [{ $size: "$likes" }, "$comments"] }, // Sum of likes (as count) and comments
               },
             },
             {
-              $sort: { totalEngagement: -1 },
+              $sort: { totalEngagement: -1 }, // Sort by total engagement (likes + comments)
             },
             {
               $skip: (page - 1) * limit, // Skip posts for previous pages
@@ -952,6 +953,7 @@ async function run() {
         res.status(500).send("An error occurred while fetching posts");
       }
     });
+    
     
 
     // Ruhul Amin
@@ -1349,6 +1351,8 @@ app.post("/dislike-ruhul/:userId", async (req, res) => {
   const { userId } = req.params;
   const { postId } = req.body;
 
+  console.log("postid",postId,  "userId",userId);
+
   try {
     const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
 
@@ -1389,7 +1393,7 @@ app.post("/dislike-ruhul/:userId", async (req, res) => {
 app.post("/like-ruhul/:userId", async (req, res) => {
   const { userId } = req.params;
   const { postId } = req.body;
-
+  console.log("postid",postId,  "userId",userId);
   try {
     const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
 
@@ -1481,6 +1485,16 @@ app.get("/is-disliked/:userId/:postId", async (req, res) => {
 //   }
 
 // });
+
+
+app.get('/get-post-details/:id', async (req, res)=>{
+ const id = req.params.id;
+ console.log(id);
+  const query = { _id: new ObjectId(id) };
+  const postDetails = await postsCollection.findOne(query);
+  console.log(postDetails);
+  res.send(postDetails)
+})
 
 app.get("/is-liked/:userId/:postId", async (req, res) => {
   const { userId, postId } = req.params;

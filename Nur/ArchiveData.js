@@ -56,7 +56,7 @@ module.exports = (archiveDataCollection) => {
         console.log("Post already archived:", post_id);
         return res.status(200).json({ archived: true });
       } else {
-        console.log("Post not archived.");
+        // console.log("Post not archived.");
         return res.status(200).json({ archived: false });
       }
     } catch (error) {

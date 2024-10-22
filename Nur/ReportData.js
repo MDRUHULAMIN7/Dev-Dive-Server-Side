@@ -70,7 +70,7 @@ module.exports = (reportDataCollection) => {
         throw new Error("Failed to report post");
       }
     } catch (error) {
-      console.error("Error reporting data:", error);
+      // console.error("Error reporting data:", error);
       return res.status(500).json({
         message: "Failed to report post",
         error,
