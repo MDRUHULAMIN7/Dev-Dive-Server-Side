@@ -341,6 +341,25 @@ async function run() {
         res.status(500).json({ message: "Failed to fetch posts" });
       }
     });
+    app.get("/random-posts", async (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit) || 5;
+        const page = parseInt(req.query.page) || 1;
+    
+        const randomPosts = await postsCollection.aggregate([
+          { $sample: { size: limit * page } }  // Adjust size based on page
+        ]).toArray();
+    
+        const paginatedPosts = randomPosts.slice((page - 1) * limit, page * limit);
+    
+        res.status(200).json(paginatedPosts);
+      } catch (error) {
+        console.error("Error fetching random posts:", error);
+        res.status(500).json({ message: "Failed to fetch random posts" });
+      }
+    });
+    
+    
 
     // get posts
     app.get("/get-posts", async (req, res) => {
@@ -961,6 +980,8 @@ async function run() {
     // get popular post
 
     app.get("/get-popular-posts", async (req, res) => {
+      const { page = 1, limit = 10 } = req.query; // default page=1, limit=10
+      
       try {
         const result = await postsCollection
           .aggregate([
@@ -972,14 +993,21 @@ async function run() {
             {
               $sort: { totalEngagement: -1 },
             },
+            {
+              $skip: (page - 1) * limit, // Skip posts for previous pages
+            },
+            {
+              $limit: parseInt(limit), // Limit posts per page
+            },
           ])
           .toArray();
-
+    
         res.send(result);
       } catch (error) {
         res.status(500).send("An error occurred while fetching posts");
       }
     });
+    
 
     // Ruhul Amin
 
