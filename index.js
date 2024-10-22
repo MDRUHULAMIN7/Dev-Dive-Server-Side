@@ -1310,7 +1310,7 @@ app.delete('/payments-history-delete/:id',async(req,res)=>{
 app.post("/dislike-ruhul/:userId", async (req, res) => {
   const { userId } = req.params;
   const { postId } = req.body;
-
+console.log(userId, postId);
   try {
     const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
 
@@ -1351,7 +1351,7 @@ app.post("/dislike-ruhul/:userId", async (req, res) => {
 app.post("/like-ruhul/:userId", async (req, res) => {
   const { userId } = req.params;
   const { postId } = req.body;
-
+  console.log(userId, postId);
   try {
     const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
 
@@ -1419,30 +1419,6 @@ app.get("/is-disliked/:userId/:postId", async (req, res) => {
   }
 });
 
-// app.get("/is-liked/:userId/:postId", async (req, res) => {
-//   const { userId, postId } = req.params;
-
-//   try {
-
-//     const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
-
-//     if (!post) {
-//       return res.status(404).json({ message: 'Post not found.' });
-//     }
-
-//     const isLikedruhul = post.likes.includes(userId);
-//     const likesCount = post.likes.length;
-
-//     res.json({
-//       isLiked: isLikedruhul,
-//       likesCount
-//     });
-//   } catch (error) {
-//     console.error('Error checking if user liked the post:', error);
-//     res.status(500).json({ message: 'An error occurred.' });
-//   }
-
-// });
 
 app.get("/is-liked/:userId/:postId", async (req, res) => {
   const { userId, postId } = req.params;
