@@ -1272,6 +1272,7 @@ async function run() {
 
 
         const { tranId } = req.params;
+        console.log(`Transaction ID: ${tranId}`); // For debugging
 
         const result = await paymentDataCollection.deleteOne({tran_id :tranId})
 
