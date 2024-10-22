@@ -1284,6 +1284,219 @@ async function run() {
 
     })
 
+// get payment history for a user 
+    app.get("/get-payment-history/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const paymentHistory = await paymentDataCollection.find(query).toArray();
+      res.send(paymentHistory);
+    });
+
+// delete payment history
+
+app.delete('/payments-history-delete/:id',async(req,res)=>{
+
+  const { id } = req.params;
+  const query = { _id: new ObjectId(id) };
+  const result = await paymentDataCollection.deleteOne(query);
+  res.send(result)
+})
+
+
+
+
+
+app.post('/dislike-ruhul/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { postId } = req.body;
+
+  try {
+ 
+    const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found.' });
+    }
+
+    
+    const isDisliked = post.dislikes.includes(userId);
+    const isLiked = post.likes.includes(userId);
+
+    let update;
+
+    if (isDisliked) {
+   
+      update = { $pull: { dislikes: userId } };
+    } else {
+     
+      update = { 
+        $push: { dislikes: userId } 
+      };
+
+      if (isLiked) {
+  
+        update.$pull = { likes: userId };
+      }
+    }
+
+
+    await postsCollection.updateOne(
+      { _id: new ObjectId(postId) },
+      update
+    );
+
+    res.status(200).json({
+      message: isDisliked ? 'Post undisliked.' : 'Post disliked.',
+      postId,
+      userId,
+    });
+  } catch (error) {
+    console.error('Error disliking/undisliking post:', error);
+    res.status(500).json({ message: 'An error occurred.' });
+  }
+});
+
+
+app.post('/like-ruhul/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { postId } = req.body;
+
+  try {
+
+    const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found.' });
+    }
+
+ 
+    const isLiked = post.likes.includes(userId);
+    const isDisliked = post.dislikes.includes(userId);
+
+    let update;
+
+    if (isLiked) {
+   
+      update = { $pull: { likes: userId } };
+    } else {
+
+      update = { 
+        $push: { likes: userId } 
+      };
+
+      if (isDisliked) {
+   
+        update.$pull = { dislikes: userId };
+      }
+    }
+
+    await postsCollection.updateOne(
+      { _id: new ObjectId(postId) },
+      update
+    );
+
+    res.status(200).json({
+      message: isLiked ? 'Post unliked.' : 'Post liked.',
+      postId,
+      userId,
+    });
+  } catch (error) {
+    console.error('Error liking/unliking post:', error);
+    res.status(500).json({ message: 'An error occurred.' });
+  }
+});
+
+// islike 
+
+
+
+app.get("/is-disliked/:userId/:postId", async (req, res) => {
+  const { userId, postId } = req.params;
+
+  try {
+
+    const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found.' });
+    }
+
+   
+    // const isDisLikedruhul = post.dislikes.includes(userId);
+    // const dislikesCount = post.dislikes.length;
+
+    const dislikes = Array.isArray(post.dislikes) ? post.dislikes : [];
+
+    const  isDisLikedruhul = dislikes.includes(userId); // Check if user has liked the post
+    const dislikesCount = dislikes.length; // Get the number of likes
+
+    res.json({
+      isDisLiked: isDisLikedruhul,
+      dislikesCount
+    });
+  } catch (error) {
+    console.error('Error checking if user liked the post:', error);
+    res.status(500).json({ message: 'An error occurred.' });
+  }
+});
+
+// app.get("/is-liked/:userId/:postId", async (req, res) => {
+//   const { userId, postId } = req.params;
+
+
+//   try {
+  
+//     const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+
+//     if (!post) {
+//       return res.status(404).json({ message: 'Post not found.' });
+//     }
+
+ 
+//     const isLikedruhul = post.likes.includes(userId);
+//     const likesCount = post.likes.length;
+
+
+//     res.json({
+//       isLiked: isLikedruhul,
+//       likesCount
+//     });
+//   } catch (error) {
+//     console.error('Error checking if user liked the post:', error);
+//     res.status(500).json({ message: 'An error occurred.' });
+//   }
+
+// });
+
+
+app.get("/is-liked/:userId/:postId", async (req, res) => {
+  const { userId, postId } = req.params;
+
+  try {
+    // Find the post by postId
+    const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found.' });
+    }
+
+    // Ensure 'likes' is treated as an array (even if it's missing)
+    const likes = Array.isArray(post.likes) ? post.likes : [];
+
+    const isLiked = likes.includes(userId); // Check if user has liked the post
+    const likesCount = likes.length; // Get the number of likes
+
+    // Send the response
+    res.json({
+      isLiked,
+      likesCount
+    });
+  } catch (error) {
+    console.error('Error checking if user liked the post:', error);
+    res.status(500).json({ message: 'An error occurred.' });
+  }
+});
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
