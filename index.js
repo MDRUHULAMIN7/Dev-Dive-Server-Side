@@ -331,13 +331,42 @@ async function run() {
     // get posts
     app.get("/main-posts", async (req, res) => {
       try {
-        const posts = await postsCollection.find().toArray();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5;
+        const skip = (page - 1) * limit;
+    
+        const posts = await postsCollection
+          .find()
+          .sort({ createdAt: -1 }) // Sort by createdAt in descending order
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+    
         res.status(200).json(posts);
       } catch (error) {
         console.error("Error fetching posts:", error);
         res.status(500).json({ message: "Failed to fetch posts" });
       }
     });
+    app.get("/random-posts", async (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit) || 5;
+        const page = parseInt(req.query.page) || 1;
+    
+        const randomPosts = await postsCollection.aggregate([
+          { $sample: { size: limit * page } }  // Adjust size based on page
+        ]).toArray();
+    
+        const paginatedPosts = randomPosts.slice((page - 1) * limit, page * limit);
+    
+        res.status(200).json(paginatedPosts);
+      } catch (error) {
+        console.error("Error fetching random posts:", error);
+        res.status(500).json({ message: "Failed to fetch random posts" });
+      }
+    });
+    
+    
 
     // get posts
     app.get("/get-posts", async (req, res) => {
@@ -896,25 +925,36 @@ async function run() {
     // get popular post
 
     app.get("/get-popular-posts", async (req, res) => {
+      const { page = 1, limit = 10 } = req.query; // default page=1, limit=10
+    
       try {
         const result = await postsCollection
           .aggregate([
             {
               $addFields: {
-                totalEngagement: { $add: ["$likes", "$comments"] },
+                totalLikes: { $size: "$likes" }, // Count the number of likes in the array
+                totalEngagement: { $add: [{ $size: "$likes" }, "$comments"] }, // Sum of likes (as count) and comments
               },
             },
             {
-              $sort: { totalEngagement: -1 },
+              $sort: { totalEngagement: -1 }, // Sort by total engagement (likes + comments)
+            },
+            {
+              $skip: (page - 1) * limit, // Skip posts for previous pages
+            },
+            {
+              $limit: parseInt(limit), // Limit posts per page
             },
           ])
           .toArray();
-
+    
         res.send(result);
       } catch (error) {
         res.status(500).send("An error occurred while fetching posts");
       }
     });
+    
+    
 
     // Ruhul Amin
 
@@ -1310,7 +1350,9 @@ app.delete('/payments-history-delete/:id',async(req,res)=>{
 app.post("/dislike-ruhul/:userId", async (req, res) => {
   const { userId } = req.params;
   const { postId } = req.body;
-console.log(userId, postId);
+
+  console.log("postid",postId,  "userId",userId);
+
   try {
     const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
 
@@ -1351,7 +1393,7 @@ console.log(userId, postId);
 app.post("/like-ruhul/:userId", async (req, res) => {
   const { userId } = req.params;
   const { postId } = req.body;
-  console.log(userId, postId);
+  console.log("postid",postId,  "userId",userId);
   try {
     const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
 
@@ -1419,6 +1461,16 @@ app.get("/is-disliked/:userId/:postId", async (req, res) => {
   }
 });
 
+
+
+app.get('/get-post-details/:id', async (req, res)=>{
+ const id = req.params.id;
+ console.log(id);
+  const query = { _id: new ObjectId(id) };
+  const postDetails = await postsCollection.findOne(query);
+  console.log(postDetails);
+  res.send(postDetails)
+})
 
 app.get("/is-liked/:userId/:postId", async (req, res) => {
   const { userId, postId } = req.params;
