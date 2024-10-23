@@ -1499,7 +1499,7 @@ async function run() {
           likesCount,
         });
       } catch (error) {
-        console.error("Error checking if user liked the post:", error);
+     
         res.status(500).json({ message: "An error occurred." });
       }
     });
