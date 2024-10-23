@@ -303,6 +303,8 @@ async function run() {
           isRead,
           relatedPostId,
           relatedUserEmail,
+          relatedUserName,
+          relatedUserPhoto,
           type,
         } = req.body;
 
@@ -313,6 +315,8 @@ async function run() {
           isRead,
           relatedPostId,
           relatedUserEmail,
+          relatedUserName,
+          relatedUserPhoto,
           type,
           createdAt: new Date(), // Optional: To track when the post was created
         });
@@ -344,8 +348,9 @@ async function run() {
       const query = {
         userEmail: email
       };
-      const result = await notificationsCollection.find(query).toArray();
+      const result = await notificationsCollection.find(query).sort({ _id: -1 }).toArray();
       res.send(result);
+      console.log(result)
     });
 
     app.get("/getPost/:id", async (req, res) => {
@@ -987,6 +992,22 @@ async function run() {
       const { id } = req.params;
       const query = { _id: new ObjectId(id) };
       const result = await postsCollection.deleteOne(query);
+      res.send(result);
+    });
+    //  delete Notification
+
+    app.delete("/deleteNotification/:id", async (req, res) => {
+      const { id } = req.params;
+      // console.log(id)
+      const query = { _id: new ObjectId(id) };
+      const result = await notificationsCollection.deleteOne(query);
+      res.send(result);
+    });
+    app.delete("/deleteAllNotification/:email", async (req, res) => {
+      const { email } = req.params;
+      console.log(email)
+      const query = { userEmail : email };
+      const result = await notificationsCollection.deleteMany(query);
       res.send(result);
     });
 
