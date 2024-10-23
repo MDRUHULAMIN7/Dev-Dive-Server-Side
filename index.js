@@ -1,5 +1,3 @@
-
-
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -14,7 +12,6 @@ const SSLCommerzPayment = require("sslcommerz-lts");
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASS;
 const is_live = false;
-
 
 // Middleware
 
@@ -36,7 +33,6 @@ app.use(cors());
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.json());
 
-
 // mongodb
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aymctjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -47,7 +43,6 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
-
 
 async function run() {
   try {
@@ -388,7 +383,7 @@ async function run() {
 
     app.get("/user-posts/:email", async (req, res) => {
       const email = req.params.email;
-      const result = await postsCollection.find({ userEmail: email}).toArray();
+      const result = await postsCollection.find({ userEmail: email }).toArray();
       res.send(result);
     });
 
@@ -1343,7 +1338,7 @@ async function run() {
     });
     // get payment history for a admin
     app.get("/get-payment-history", async (req, res) => {
-    
+
       const paymentHistory = await paymentDataCollection.find().toArray();
       res.send(paymentHistory);
     });
@@ -1511,14 +1506,76 @@ async function run() {
           likesCount,
         });
       } catch (error) {
-     
+
         res.status(500).json({ message: "An error occurred." });
       }
     });
 
-    app.get('/get-apply-mentor', async(req,res) =>{
-      
+
+    // applay mentor
+
+    app.post("/applay-mentor", async (req, res) => {
+      const mentorInfo = req.body.mentorInfo;
+      console.log("mentorInfo", mentorInfo);
+
+      const newMentor = {
+        mentorInfo,
+        status: "pending",
+      };
+      const result = await mentorDataCollection.insertOne(newMentor);
+      res.send(result);
     })
+
+    app.get('/get-apply-mentor', async (req, res) => {
+      const result = await mentorDataCollection.find().toArray()
+      res.send(result);
+    })
+
+
+
+    app.put('/make-mentor/:id', async (req, res) => {
+      const userId = req.params.id;
+    
+      try {
+        // Find and update the user's role to 'mentor' in usersCollection
+        const filter = { _id: new ObjectId(userId) };
+        const updateUserDoc = {
+          $set: {
+            role: 'mentor',
+          },
+        };
+    
+        const userResult = await usersCollection.updateOne(filter, updateUserDoc);
+    
+        if (userResult.matchedCount === 0) {
+          return res.status(404).send({ message: 'User not found in usersCollection' });
+        }
+    
+        // Find and update the user's status to 'mentor' in mentorDataCollection
+
+        const filter2 = {userId };
+        const updateMentorDoc = {
+
+          $set: {
+            status: 'mentor',
+          },
+        };
+    
+        const mentorResult = await mentorDataCollection.updateOne(filter2, updateMentorDoc);
+    
+        if (mentorResult.matchedCount === 0) {
+          return res.status(404).send({ message: 'Mentor data not found in mentorDataCollection' });
+        }
+    
+        console.log('User update result:', userResult);
+        console.log('Mentor update result:', mentorResult);
+    
+        res.send({ message: 'User role updated to mentor and mentor status set' });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Error updating user role or mentor status' });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
@@ -1528,16 +1585,11 @@ async function run() {
 }
 run().catch(console.dir);
 
-
 // mongodb
 app.get("/", (req, res) => {
   res.send("DevDive is  on the way");
 });
 
-
 app.listen(port, () => {
   console.log(`DevDive is running on:${port}`);
 });
-
-
-
