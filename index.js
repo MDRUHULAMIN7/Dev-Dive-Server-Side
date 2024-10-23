@@ -186,8 +186,8 @@ async function run() {
           username,
           profilePicture,
           poll,
-          likes: 0,
-          dislikes: 0,
+          likes: [],
+          dislikes: [],
           comments: 0,
           createdAt: new Date(), // Optional: To track when the post was created
         });
