@@ -6,12 +6,12 @@ module.exports = (reportDataCollection) => {
     try {
       const { post_id, email } = req.query;
 
-      console.log(
-        "Checking report status for post:",
-        post_id,
-        "and user:",
-        email
-      );
+      // console.log(
+      //   "Checking report status for post:",
+      //   post_id,
+      //   "and user:",
+      //   email
+      // );
 
       if (!post_id || !email) {
         return res
@@ -25,10 +25,10 @@ module.exports = (reportDataCollection) => {
       });
 
       if (existingReport) {
-        console.log("Post already reported:", post_id);
+        // console.log("Post already reported:", post_id);
         return res.status(200).json({ reported: true });
       } else {
-        console.log("Post not reported.");
+        // console.log("Post not reported.");
         return res.status(200).json({ reported: false });
       }
     } catch (error) {

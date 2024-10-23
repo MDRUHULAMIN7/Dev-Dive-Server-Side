@@ -334,14 +334,14 @@ async function run() {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
         const skip = (page - 1) * limit;
-    
+
         const posts = await postsCollection
           .find()
           .sort({ createdAt: -1 }) // Sort by createdAt in descending order
           .skip(skip)
           .limit(limit)
           .toArray();
-    
+
         res.status(200).json(posts);
       } catch (error) {
         console.error("Error fetching posts:", error);
@@ -352,21 +352,21 @@ async function run() {
       try {
         const limit = parseInt(req.query.limit) || 5;
         const page = parseInt(req.query.page) || 1;
-    
+
         const randomPosts = await postsCollection.aggregate([
           { $sample: { size: limit * page } }  // Adjust size based on page
         ]).toArray();
-    
+
         const paginatedPosts = randomPosts.slice((page - 1) * limit, page * limit);
-    
+
         res.status(200).json(paginatedPosts);
       } catch (error) {
         console.error("Error fetching random posts:", error);
         res.status(500).json({ message: "Failed to fetch random posts" });
       }
     });
-    
-    
+
+
 
     // get posts
     app.get("/get-posts", async (req, res) => {
@@ -926,7 +926,7 @@ async function run() {
 
     app.get("/get-popular-posts", async (req, res) => {
       const { page = 1, limit = 10 } = req.query; // default page=1, limit=10
-    
+
       try {
         const result = await postsCollection
           .aggregate([
@@ -947,14 +947,14 @@ async function run() {
             },
           ])
           .toArray();
-    
+
         res.send(result);
       } catch (error) {
         res.status(500).send("An error occurred while fetching posts");
       }
     });
-    
-    
+
+
 
     // Ruhul Amin
 
@@ -1465,10 +1465,10 @@ app.get("/is-disliked/:userId/:postId", async (req, res) => {
 
 app.get('/get-post-details/:id', async (req, res)=>{
  const id = req.params.id;
- console.log(id);
+//  console.log(id);
   const query = { _id: new ObjectId(id) };
   const postDetails = await postsCollection.findOne(query);
-  console.log(postDetails);
+  // console.log(postDetails);
   res.send(postDetails)
 })
 
