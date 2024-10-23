@@ -66,6 +66,7 @@ async function run() {
     const archiveDataCollection = database.collection("archiveData");
     const reportDataCollection = database.collection("reportData");
     const paymentDataCollection = database.collection("paymentData");
+    const mentorDataCollection = database.collection("mentorData");
 
     // All Operations By Nur
 
@@ -1335,6 +1336,12 @@ async function run() {
       const paymentHistory = await paymentDataCollection.find(query).toArray();
       res.send(paymentHistory);
     });
+    // get payment history for a admin
+    app.get("/get-payment-history", async (req, res) => {
+    
+      const paymentHistory = await paymentDataCollection.find().toArray();
+      res.send(paymentHistory);
+    });
 
     // delete payment history
 
@@ -1503,6 +1510,21 @@ async function run() {
         res.status(500).json({ message: "An error occurred." });
       }
     });
+
+
+    // applay mentor
+
+    app.post("/applay-mentor", async (req, res) => {
+      const  mentorInfo  = req.body.mentorInfo;
+      console.log("mentorInfo", mentorInfo);
+        
+        const newMentor = {
+          mentorInfo,
+          status: "pending",
+        };
+        const result = await mentorDataCollection.insertOne(newMentor);
+        res.send(result);
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
