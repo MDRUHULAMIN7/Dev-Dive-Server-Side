@@ -34,12 +34,12 @@ module.exports = (archiveDataCollection) => {
     try {
       const { post_id, email } = req.query;
 
-      console.log(
-        "Checking archive status for post:",
-        post_id,
-        "and user:",
-        email
-      );
+      // console.log(
+      //   "Checking archive status for post:",
+      //   post_id,
+      //   "and user:",
+      //   email
+      // );
 
       if (!post_id || !email) {
         return res

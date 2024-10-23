@@ -8,8 +8,8 @@ const port = process.env.PORT || 5000;
 require("dotenv").config();
 const allowedOrigin = process.env.ALLOWED_ORIGINS;
 const localhostRegex = /^http:\/\/localhost:\d{4}$/;
-const SSLCommerzPayment = require('sslcommerz-lts')
-const store_id =process.env.STORE_ID;
+const SSLCommerzPayment = require("sslcommerz-lts");
+const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASS;
 const is_live = false;
 
@@ -43,8 +43,6 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
-
-
 
 async function run() {
   try {
@@ -337,14 +335,14 @@ async function run() {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
         const skip = (page - 1) * limit;
-    
+
         const posts = await postsCollection
           .find()
           .sort({ createdAt: -1 }) // Sort by createdAt in descending order
           .skip(skip)
           .limit(limit)
           .toArray();
-    
+
         res.status(200).json(posts);
       } catch (error) {
         console.error("Error fetching posts:", error);
@@ -355,21 +353,24 @@ async function run() {
       try {
         const limit = parseInt(req.query.limit) || 5;
         const page = parseInt(req.query.page) || 1;
-    
-        const randomPosts = await postsCollection.aggregate([
-          { $sample: { size: limit * page } }  // Adjust size based on page
-        ]).toArray();
-    
-        const paginatedPosts = randomPosts.slice((page - 1) * limit, page * limit);
-    
+
+        const randomPosts = await postsCollection
+          .aggregate([
+            { $sample: { size: limit * page } }, // Adjust size based on page
+          ])
+          .toArray();
+
+        const paginatedPosts = randomPosts.slice(
+          (page - 1) * limit,
+          page * limit
+        );
+
         res.status(200).json(paginatedPosts);
       } catch (error) {
         console.error("Error fetching random posts:", error);
         res.status(500).json({ message: "Failed to fetch random posts" });
       }
     });
-    
-    
 
     // get posts
     app.get("/get-posts", async (req, res) => {
@@ -412,7 +413,6 @@ async function run() {
       const result = await commentsCollection.find().toArray();
       res.send(result);
     });
-
 
     app.post("/like/:id", async (req, res) => {
       try {
@@ -937,7 +937,7 @@ async function run() {
 
     app.get("/get-popular-posts", async (req, res) => {
       const { page = 1, limit = 10 } = req.query; // default page=1, limit=10
-    
+
       try {
         const result = await postsCollection
           .aggregate([
@@ -958,14 +958,12 @@ async function run() {
             },
           ])
           .toArray();
-    
+
         res.send(result);
       } catch (error) {
         res.status(500).send("An error occurred while fetching posts");
       }
     });
-    
-    
 
     // Ruhul Amin
 
@@ -1137,7 +1135,6 @@ async function run() {
       }
     });
 
-
     // get - following post
 
     app.get("/get-following-posts/:email", async (req, res) => {
@@ -1225,7 +1222,6 @@ async function run() {
       }
     });
 
-
     // payment Info
     app.post("/payment", async (req, res) => {
       try {
@@ -1269,12 +1265,9 @@ async function run() {
           tran_id,
         };
 
-
         await paymentDataCollection.insertOne(finalPayment);
 
-
         res.send({ url: GatewayPageURL });
-
       } catch (error) {
         console.error("Payment initialization failed:", error);
         res.status(500).json({ message: "Internal Server Error" });
@@ -1282,15 +1275,17 @@ async function run() {
     });
 
     // payment success
-    app.post('/payment/success/:tranId', async (req, res) => {
+    app.post("/payment/success/:tranId", async (req, res) => {
       try {
         const { tranId } = req.params;
         console.log(`Transaction ID: ${tranId}`); // For debugging
 
-        const paymentData = await paymentDataCollection.findOne({ tran_id: tranId });
+        const paymentData = await paymentDataCollection.findOne({
+          tran_id: tranId,
+        });
 
         if (!paymentData) {
-          return res.status(404).json({ message: 'Payment data not found' });
+          return res.status(404).json({ message: "Payment data not found" });
         }
 
         const result = await paymentDataCollection.updateOne(
@@ -1300,43 +1295,40 @@ async function run() {
 
         const result2 = await usersCollection.updateOne(
           { email: paymentData.email },
-          { $set: { userType: 'premium' } }
+          { $set: { userType: "premium" } }
         );
 
         console.log(result, result2); // For debugging
 
         if (result.modifiedCount > 0 && result2.acknowledged) {
           res.redirect(
-            `${process.env.BASE_URL}/premium-success/${encodeURIComponent(tranId)}`
+            `${process.env.BASE_URL}/premium-success/${encodeURIComponent(
+              tranId
+            )}`
           );
         } else {
-          res.status(400).json({ message: 'Payment update failed' });
+          res.status(400).json({ message: "Payment update failed" });
         }
-
       } catch (error) {
-        console.error('Payment success handler error:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+        console.error("Payment success handler error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
       }
     });
-// payment failed
-    app.post('/payment/failed/:tranId', async (req, res) => {
+    // payment failed
+    app.post("/payment/failed/:tranId", async (req, res) => {
+      const { tranId } = req.params;
+      console.log(`Transaction ID: ${tranId}`); // For debugging
 
+      const result = await paymentDataCollection.deleteOne({ tran_id: tranId });
 
-        const { tranId } = req.params;
-        console.log(`Transaction ID: ${tranId}`); // For debugging
+      if (result.deletedCount > 0) {
+        res.redirect(
+          `${process.env.BASE_URL}/premium-failed/${encodeURIComponent(tranId)}`
+        );
+      }
+    });
 
-        const result = await paymentDataCollection.deleteOne({tran_id :tranId})
-
-        if(result.deletedCount > 0 ){
-
-          res.redirect(
-            `${process.env.BASE_URL}/premium-failed/${encodeURIComponent(tranId)}`
-          );
-        }
-
-    })
-
-// get payment history for a user
+    // get payment history for a user
     app.get("/get-payment-history/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email };
@@ -1344,172 +1336,173 @@ async function run() {
       res.send(paymentHistory);
     });
 
-// delete payment history
+    // delete payment history
 
-app.delete('/payments-history-delete/:id',async(req,res)=>{
+    app.delete("/payments-history-delete/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await paymentDataCollection.deleteOne(query);
+      res.send(result);
+    });
 
-  const { id } = req.params;
-  const query = { _id: new ObjectId(id) };
-  const result = await paymentDataCollection.deleteOne(query);
-  res.send(result)
-})
+    app.post("/dislike-ruhul/:userId", async (req, res) => {
+      const { userId } = req.params;
+      const { postId } = req.body;
 
+      console.log("postid", postId, "userId", userId);
 
+      try {
+        const post = await postsCollection.findOne({
+          _id: new ObjectId(postId),
+        });
 
+        if (!post) {
+          return res.status(404).json({ message: "Post not found." });
+        }
 
+        const isDisliked = post.dislikes.includes(userId);
+        const isLiked = post.likes.includes(userId);
 
-app.post("/dislike-ruhul/:userId", async (req, res) => {
-  const { userId } = req.params;
-  const { postId } = req.body;
+        let update;
 
-  console.log("postid",postId,  "userId",userId);
+        if (isDisliked) {
+          update = { $pull: { dislikes: userId } };
+        } else {
+          update = {
+            $push: { dislikes: userId },
+          };
 
-  try {
-    const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+          if (isLiked) {
+            update.$pull = { likes: userId };
+          }
+        }
 
-    if (!post) {
-      return res.status(404).json({ message: "Post not found." });
-    }
+        await postsCollection.updateOne({ _id: new ObjectId(postId) }, update);
 
-    const isDisliked = post.dislikes.includes(userId);
-    const isLiked = post.likes.includes(userId);
-
-    let update;
-
-    if (isDisliked) {
-      update = { $pull: { dislikes: userId } };
-    } else {
-      update = {
-        $push: { dislikes: userId },
-      };
-
-      if (isLiked) {
-        update.$pull = { likes: userId };
+        res.status(200).json({
+          message: isDisliked ? "Post undisliked." : "Post disliked.",
+          postId,
+          userId,
+        });
+      } catch (error) {
+        console.error("Error disliking/undisliking post:", error);
+        res.status(500).json({ message: "An error occurred." });
       }
-    }
-
-    await postsCollection.updateOne({ _id: new ObjectId(postId) }, update);
-
-    res.status(200).json({
-      message: isDisliked ? "Post undisliked." : "Post disliked.",
-      postId,
-      userId,
     });
-  } catch (error) {
-    console.error("Error disliking/undisliking post:", error);
-    res.status(500).json({ message: "An error occurred." });
-  }
-});
 
-app.post("/like-ruhul/:userId", async (req, res) => {
-  const { userId } = req.params;
-  const { postId } = req.body;
-  console.log("postid",postId,  "userId",userId);
-  try {
-    const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+    app.post("/like-ruhul/:userId", async (req, res) => {
+      const { userId } = req.params;
+      const { postId } = req.body;
+      console.log("postid", postId, "userId", userId);
+      try {
+        const post = await postsCollection.findOne({
+          _id: new ObjectId(postId),
+        });
 
-    if (!post) {
-      return res.status(404).json({ message: "Post not found." });
-    }
+        if (!post) {
+          return res.status(404).json({ message: "Post not found." });
+        }
 
-    const isLiked = post.likes.includes(userId);
-    const isDisliked = post.dislikes.includes(userId);
+        const isLiked = post.likes.includes(userId);
+        const isDisliked = post.dislikes.includes(userId);
 
-    let update;
+        let update;
 
-    if (isLiked) {
-      update = { $pull: { likes: userId } };
-    } else {
-      update = {
-        $push: { likes: userId },
-      };
+        if (isLiked) {
+          update = { $pull: { likes: userId } };
+        } else {
+          update = {
+            $push: { likes: userId },
+          };
 
-      if (isDisliked) {
-        update.$pull = { dislikes: userId };
+          if (isDisliked) {
+            update.$pull = { dislikes: userId };
+          }
+        }
+
+        await postsCollection.updateOne({ _id: new ObjectId(postId) }, update);
+
+        res.status(200).json({
+          message: isLiked ? "Post unliked." : "Post liked.",
+          postId,
+          userId,
+        });
+      } catch (error) {
+        console.error("Error liking/unliking post:", error);
+        res.status(500).json({ message: "An error occurred." });
       }
-    }
-
-    await postsCollection.updateOne({ _id: new ObjectId(postId) }, update);
-
-    res.status(200).json({
-      message: isLiked ? "Post unliked." : "Post liked.",
-      postId,
-      userId,
     });
-  } catch (error) {
-    console.error("Error liking/unliking post:", error);
-    res.status(500).json({ message: "An error occurred." });
-  }
-});
 
-// islike
+    // islike
 
-app.get("/is-disliked/:userId/:postId", async (req, res) => {
-  const { userId, postId } = req.params;
+    app.get("/is-disliked/:userId/:postId", async (req, res) => {
+      const { userId, postId } = req.params;
 
-  try {
-    const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+      try {
+        const post = await postsCollection.findOne({
+          _id: new ObjectId(postId),
+        });
 
-    if (!post) {
-      return res.status(404).json({ message: "Post not found." });
-    }
+        if (!post) {
+          return res.status(404).json({ message: "Post not found." });
+        }
 
-    // const isDisLikedruhul = post.dislikes.includes(userId);
-    // const dislikesCount = post.dislikes.length;
+        // const isDisLikedruhul = post.dislikes.includes(userId);
+        // const dislikesCount = post.dislikes.length;
 
-    const dislikes = Array.isArray(post.dislikes) ? post.dislikes : [];
+        const dislikes = Array.isArray(post.dislikes) ? post.dislikes : [];
 
-    const isDisLikedruhul = dislikes.includes(userId); // Check if user has liked the post
-    const dislikesCount = dislikes.length; // Get the number of likes
+        const isDisLikedruhul = dislikes.includes(userId); // Check if user has liked the post
+        const dislikesCount = dislikes.length; // Get the number of likes
 
-    res.json({
-      isDisLiked: isDisLikedruhul,
-      dislikesCount,
+        res.json({
+          isDisLiked: isDisLikedruhul,
+          dislikesCount,
+        });
+      } catch (error) {
+        console.error("Error checking if user liked the post:", error);
+        res.status(500).json({ message: "An error occurred." });
+      }
     });
-  } catch (error) {
-    console.error("Error checking if user liked the post:", error);
-    res.status(500).json({ message: "An error occurred." });
-  }
-});
 
-
-
-app.get('/get-post-details/:id', async (req, res)=>{
- const id = req.params.id;
- console.log(id);
-  const query = { _id: new ObjectId(id) };
-  const postDetails = await postsCollection.findOne(query);
-  console.log(postDetails);
-  res.send(postDetails)
-})
-
-app.get("/is-liked/:userId/:postId", async (req, res) => {
-  const { userId, postId } = req.params;
-
-  try {
-    // Find the post by postId
-    const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
-
-    if (!post) {
-      return res.status(404).json({ message: "Post not found." });
-    }
-
-    // Ensure 'likes' is treated as an array (even if it's missing)
-    const likes = Array.isArray(post.likes) ? post.likes : [];
-
-    const isLiked = likes.includes(userId); // Check if user has liked the post
-    const likesCount = likes.length; // Get the number of likes
-
-    // Send the response
-    res.json({
-      isLiked,
-      likesCount,
+    app.get("/get-post-details/:id", async (req, res) => {
+      const id = req.params.id;
+      //  console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const postDetails = await postsCollection.findOne(query);
+      // console.log(postDetails);
+      res.send(postDetails);
     });
-  } catch (error) {
-    console.error("Error checking if user liked the post:", error);
-    res.status(500).json({ message: "An error occurred." });
-  }
-});
+
+    app.get("/is-liked/:userId/:postId", async (req, res) => {
+      const { userId, postId } = req.params;
+
+      try {
+        // Find the post by postId
+        const post = await postsCollection.findOne({
+          _id: new ObjectId(postId),
+        });
+
+        if (!post) {
+          return res.status(404).json({ message: "Post not found." });
+        }
+
+        // Ensure 'likes' is treated as an array (even if it's missing)
+        const likes = Array.isArray(post.likes) ? post.likes : [];
+
+        const isLiked = likes.includes(userId); // Check if user has liked the post
+        const likesCount = likes.length; // Get the number of likes
+
+        // Send the response
+        res.json({
+          isLiked,
+          likesCount,
+        });
+      } catch (error) {
+        console.error("Error checking if user liked the post:", error);
+        res.status(500).json({ message: "An error occurred." });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
