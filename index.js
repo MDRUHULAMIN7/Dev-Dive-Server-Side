@@ -1498,6 +1498,10 @@ async function run() {
       }
     });
 
+    app.get('/get-apply-mentor', async(req,res) =>{
+      
+    })
+
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
   } finally {
