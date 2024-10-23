@@ -18,19 +18,22 @@ const is_live = false;
 
 // Middleware
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || origin === allowedOrigin || localhostRegex.test(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    optionSuccessStatus: 200,
-  })
-);
+// app.use(
+//   cors({
+//     origin: (origin, callback) => {
+//       if (!origin || origin === allowedOrigin || localhostRegex.test(origin)) {
+//         callback(null, true);
+//       } else {
+//         callback(new Error("Not allowed by CORS"));
+//       }
+//     },
+//     credentials: true,
+//     optionSuccessStatus: 200,
+//   })
+// );
+
+app.use(cors());
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.json());
 
 
@@ -68,6 +71,7 @@ async function run() {
     const archiveDataCollection = database.collection("archiveData");
     const reportDataCollection = database.collection("reportData");
     const paymentDataCollection = database.collection("paymentData");
+    const mentorDataCollection = database.collection("mentorData");
 
     // All Operations By Nur
 
@@ -377,6 +381,14 @@ async function run() {
     // get posts
     app.get("/get-posts", async (req, res) => {
       const result = await postsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get users posts 
+
+    app.get("/user-posts/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await postsCollection.find({ userEmail: email}).toArray();
       res.send(result);
     });
 
@@ -1329,6 +1341,12 @@ async function run() {
       const paymentHistory = await paymentDataCollection.find(query).toArray();
       res.send(paymentHistory);
     });
+    // get payment history for a admin
+    app.get("/get-payment-history", async (req, res) => {
+    
+      const paymentHistory = await paymentDataCollection.find().toArray();
+      res.send(paymentHistory);
+    });
 
     // delete payment history
 
@@ -1493,7 +1511,7 @@ async function run() {
           likesCount,
         });
       } catch (error) {
-        console.error("Error checking if user liked the post:", error);
+     
         res.status(500).json({ message: "An error occurred." });
       }
     });
