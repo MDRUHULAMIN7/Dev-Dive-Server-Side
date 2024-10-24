@@ -208,8 +208,8 @@ async function run() {
           username,
           profilePicture,
           poll,
-          likes: 0,
-          dislikes: 0,
+          likes: [],
+          dislikes: [],
           comments: 0,
           createdAt: new Date(), // Optional: To track when the post was created
         });
@@ -1005,11 +1005,11 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await notificationsCollection.deleteOne(query);
       res.send(result);
-      
+
     });
     app.delete("/deleteUnfollowNotification", async (req, res) => {
-      try{
-        const { userEmail, relatedUserEmail} = req.query;
+      try {
+        const { userEmail, relatedUserEmail } = req.query;
         console.log(userEmail, relatedUserEmail);
         const query = { userEmail: userEmail, relatedUserEmail: relatedUserEmail };
         const result = await notificationsCollection.deleteMany(query);
@@ -1030,35 +1030,38 @@ async function run() {
 
     // get popular post
 
-    app.get("/get-popular-posts", async (req, res) => {
-      const { page = 1, limit = 10 } = req.query; // default page=1, limit=10
+  app.get("/get-popular-posts", async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
 
-      try {
-        const result = await postsCollection
-          .aggregate([
-            {
-              $addFields: {
-                totalLikes: { $size: "$likes" }, // Count the number of likes in the array
-                totalEngagement: { $add: [{ $size: "$likes" }, "$comments"] }, // Sum of likes (as count) and comments
-              },
-            },
-            {
-              $sort: { totalEngagement: -1 }, // Sort by total engagement (likes + comments)
-            },
-            {
-              $skip: (page - 1) * limit, // Skip posts for previous pages
-            },
-            {
-              $limit: parseInt(limit), // Limit posts per page
-            },
-          ])
-          .toArray();
+  try {
+    const totalPosts = await postsCollection.countDocuments();
 
-        res.send(result);
-      } catch (error) {
-        res.status(500).send("An error occurred while fetching posts");
-      }
+    const posts = await postsCollection
+      .find()
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .toArray();
+
+    const sortedPosts = posts
+      .map(post => ({
+        ...post,
+        totalEngagement: post.likes.length + post.comments,
+      }))
+      .sort((a, b) => b.totalEngagement - a.totalEngagement); 
+
+    res.send({
+      posts: sortedPosts,
+      totalPosts
     });
+  } catch (error) {
+    res.status(500).send("An error occurred while fetching posts");
+  }
+});
+
+    
+    
+    
+    
 
     // Ruhul Amin
 
@@ -1232,21 +1235,38 @@ async function run() {
     // get - following post
 
     app.get("/get-following-posts/:email", async (req, res) => {
-      const email = req.params.email;
+  const email = req.params.email;
+  const page = parseInt(req.query.page) || 1; 
+  const limit = parseInt(req.query.limit) || 5; 
+  const skip = (page - 1) * limit; 
 
-      const query = { followerEmail: email };
-      const result = await followersCollection.find(query).toArray();
+  try {
+    const query = { followerEmail: email };
+    const result = await followersCollection.find(query).toArray();
 
-      if (result?.length) {
-        const followingEmails = result?.map(
-          (follower) => follower?.followingEmail
-        );
-        const query2 = { userEmail: { $in: followingEmails } };
-        const followingPosts = await postsCollection.find(query2).toArray();
+    if (result?.length) {
+      const followingEmails = result.map(
+        (follower) => follower.followingEmail
+      );
+      const query2 = { userEmail: { $in: followingEmails } };
 
-        res.send(followingPosts);
-      }
-    });
+      // Add sorting by "createdAt" in descending order and pagination using skip and limit
+      const followingPosts = await postsCollection
+        .find(query2)
+        .sort({ createdAt: -1 }) // Sort by latest "createdAt" first
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+
+      res.send(followingPosts);
+    } else {
+      res.send([]);
+    }
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching following posts", error });
+  }
+});
+
 
     // poll
     app.put("/posts/:id/poll/vote", async (req, res) => {
@@ -1601,27 +1621,28 @@ async function run() {
     // applay mentor
 
     app.post("/applay-mentor", async (req, res) => {
-      const  mentorInfo  = req.body;
+      const mentorInfo = req.body;
       // console.log("mentorInfo", mentorInfo);
-      const res1 = await mentorDataCollection.findOne({ useremail: mentorInfo.useremail});
-      if(res1){
-        return res.send({message:"You have already applied"});
+      const res1 = await mentorDataCollection.findOne({ useremail: mentorInfo.useremail });
+      if (res1) {
+        return res.send({ message: "You have already applied" });
       }
 
-        const newMentor = {
-          ...mentorInfo,
-          status: "pending",
-        };
-        const result = await mentorDataCollection.insertOne(newMentor);
-        res.send(result);
+      const newMentor = {
+        ...mentorInfo,
+        status: "pending",
+      };
+      const result = await mentorDataCollection.insertOne(newMentor);
+      res.send(result);
     })
     app.get('/get-mentor/:email', async (req, res) => {
       const email = req.params.email;
-      const result = await mentorDataCollection.findOne({ useremail: email});
-      if(result){
-      res.send({message:"You have already applied"});}
-      else{
-        res.send({message:"You can apply now ."})
+      const result = await mentorDataCollection.findOne({ useremail: email });
+      if (result) {
+        res.send({ message: "You have already applied" });
+      }
+      else {
+        res.send({ message: "You can apply now ." })
       }
 
     })
@@ -1636,12 +1657,12 @@ async function run() {
     })
 
     app.put("/make-mentor/:useremail", async (req, res) => {
-      const 
-      useremail = req.params.useremail;
+      const
+        useremail = req.params.useremail;
 
       try {
         // Find and update the user's role to 'mentor' in usersCollection
-        const filter = { email: useremail};
+        const filter = { email: useremail };
         const updateUserDoc = {
           $set: {
             role: "mentor",
@@ -1662,7 +1683,8 @@ async function run() {
         // Find and update the user's status to 'mentor' in mentorDataCollection
 
         const filter2 = {
-          useremail};
+          useremail
+        };
         const updateMentorDoc = {
           $set: {
             status: "mentor",
@@ -1693,7 +1715,7 @@ async function run() {
     });
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
-   
+
   } finally {
     // Ensures that the client will close when you finish/error
   }
