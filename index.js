@@ -1140,21 +1140,36 @@ async function run() {
 
     app.get("/get-following-posts/:email", async (req, res) => {
       const email = req.params.email;
-
-      const query = { followerEmail: email };
-      const result = await followersCollection.find(query).toArray();
-
-      if (result?.length) {
-        const followingEmails = result?.map(
-          (follower) => follower?.followingEmail
-        );
-        const query2 = { userEmail: { $in: followingEmails } };
-        const followingPosts = await postsCollection.find(query2).toArray();
-
-        res.send(followingPosts);
+      const page = parseInt(req.query.page) || 1; // Get page from query, default to 1
+      const limit = parseInt(req.query.limit) || 5; // Limit the number of results per page, default to 5
+      const skip = (page - 1) * limit; // Calculate the skip value for pagination
+  
+      try {
+          const query = { followerEmail: email };
+          const result = await followersCollection.find(query).toArray();
+  
+          if (result?.length) {
+              const followingEmails = result?.map(
+                  (follower) => follower?.followingEmail
+              );
+              const query2 = { userEmail: { $in: followingEmails } };
+  
+              // Add pagination using skip and limit
+              const followingPosts = await postsCollection
+                  .find(query2)
+                  .skip(skip)
+                  .limit(limit)
+                  .toArray();
+  
+              res.send(followingPosts);
+          } else {
+              res.send([]);
+          }
+      } catch (error) {
+          res.status(500).send({ message: "Error fetching following posts", error });
       }
-    });
-
+  });
+  
     // poll
     app.put("/posts/:id/poll/vote", async (req, res) => {
       const { id } = req.params;
@@ -1525,6 +1540,53 @@ async function run() {
         const result = await mentorDataCollection.insertOne(newMentor);
         res.send(result);
     })
+
+    app.get("/applay-mentor", async (req, res) => {
+      const mentors = await mentorDataCollection.find().toArray();
+      res.send(mentors);
+    })
+
+
+    app.put('/make-mentor/:id', async (req, res) => {
+      const userId = req.params.id;
+    
+      try {
+        const filter = { _id: new ObjectId(userId) };
+        const updateDoc = {
+          $set: {
+            role: 'mentor',
+          },
+        };
+    
+        // Update the user's role in usersCollection
+        const result = await usersCollection.updateOne(filter, updateDoc);
+    
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: 'User not found' });
+        }
+    
+        // Update mentorDataCollection with the user's status
+        const mentorUpdate = {
+          $set: {
+            status: 'mentor',
+          },
+        };
+        
+        const mentorResult = await mentorDataCollection.updateOne(filter, mentorUpdate);
+    
+        if (mentorResult.matchedCount === 0) {
+          return res.status(404).send({ message: 'Mentor data not found for this user' });
+        }
+    
+        res.send({ message: 'User role updated to mentor and mentor status set' });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Error updating user role or mentor status' });
+      }
+    });
+    
+    
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
