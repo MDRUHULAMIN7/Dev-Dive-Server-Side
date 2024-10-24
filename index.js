@@ -45,19 +45,7 @@ app.use(
   })
 );
 
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin || origin === allowedOrigin || localhostRegex.test(origin)) {
-//         callback(null, true);
-//       } else {
-//         callback(new Error("Not allowed by CORS"));
-//       }
-//     },
-//     credentials: true,
-//     optionSuccessStatus: 200,
-//   })
-// );
+// app.use(cors())
 
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
@@ -94,7 +82,7 @@ async function run() {
     const messagesCollection = database.collection("messages");
     const archiveDataCollection = database.collection("archiveData");
     const reportDataCollection = database.collection("reportData");
-    const notificationsCollection= database.collection("notifications")
+    const notificationsCollection = database.collection("notifications");
     const paymentDataCollection = database.collection("paymentData");
     const mentorDataCollection = database.collection("mentorData");
 
@@ -333,7 +321,7 @@ async function run() {
         res.status(500).json({ message: "Failed to add reply" });
       }
     });
-    app.post("/postNotification", async(req,res)=>{
+    app.post("/postNotification", async (req, res) => {
       try {
         const {
           userEmail,
@@ -367,7 +355,7 @@ async function run() {
         console.error("Error adding notification:", error);
         res.status(500).json({ message: "Failed to add notification" });
       }
-    })
+    });
     app.get("/getComments/:id", async (req, res) => {
       const id = req.params.id;
       // const query = { contentId: new ObjectId(id)};
@@ -382,13 +370,16 @@ async function run() {
 
     app.get("/getNotifications/:email", async (req, res) => {
       const email = req.params.email;
-      console.log(email)
+      console.log(email);
       const query = {
-        userEmail: email
+        userEmail: email,
       };
-      const result = await notificationsCollection.find(query).sort({ _id: -1 }).toArray();
+      const result = await notificationsCollection
+        .find(query)
+        .sort({ _id: -1 })
+        .toArray();
       res.send(result);
-      console.log(result)
+      console.log(result);
     });
 
     app.get("/getPost/:id", async (req, res) => {
@@ -1020,8 +1011,8 @@ async function run() {
     });
     app.delete("/deleteAllNotification/:email", async (req, res) => {
       const { email } = req.params;
-      console.log(email)
-      const query = { userEmail : email };
+      console.log(email);
+      const query = { userEmail: email };
       const result = await notificationsCollection.deleteMany(query);
       res.send(result);
     });
