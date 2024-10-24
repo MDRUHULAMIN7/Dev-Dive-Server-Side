@@ -1030,38 +1030,38 @@ async function run() {
 
     // get popular post
 
-    app.get("/get-popular-posts", async (req, res) => {
-      const { page = 1, limit = 10 } = req.query;
+  app.get("/get-popular-posts", async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
 
-      try {
-        const totalPosts = await postsCollection.countDocuments();
+  try {
+    const totalPosts = await postsCollection.countDocuments();
 
-        const posts = await postsCollection
-          .find()
-          .skip((page - 1) * limit)
-          .limit(parseInt(limit))
-          .toArray();
+    const posts = await postsCollection
+      .find()
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .toArray();
 
-        const sortedPosts = posts
-          .map(post => ({
-            ...post,
-            totalEngagement: post.likes.length + post.comments,
-          }))
-          .sort((a, b) => b.totalEngagement - a.totalEngagement);
+    const sortedPosts = posts
+      .map(post => ({
+        ...post,
+        totalEngagement: post.likes.length + post.comments,
+      }))
+      .sort((a, b) => b.totalEngagement - a.totalEngagement); 
 
-        res.send({
-          posts: sortedPosts,
-          totalPosts
-        });
-      } catch (error) {
-        res.status(500).send("An error occurred while fetching posts");
-      }
+    res.send({
+      posts: sortedPosts,
+      totalPosts
     });
+  } catch (error) {
+    res.status(500).send("An error occurred while fetching posts");
+  }
+});
 
-
-
-
-
+    
+    
+    
+    
 
     // Ruhul Amin
 
@@ -1235,37 +1235,37 @@ async function run() {
     // get - following post
 
     app.get("/get-following-posts/:email", async (req, res) => {
-      const email = req.params.email;
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 5;
-      const skip = (page - 1) * limit;
+  const email = req.params.email;
+  const page = parseInt(req.query.page) || 1; 
+  const limit = parseInt(req.query.limit) || 5; 
+  const skip = (page - 1) * limit; 
 
-      try {
-        const query = { followerEmail: email };
-        const result = await followersCollection.find(query).toArray();
+  try {
+    const query = { followerEmail: email };
+    const result = await followersCollection.find(query).toArray();
 
-        if (result?.length) {
-          const followingEmails = result.map(
-            (follower) => follower.followingEmail
-          );
-          const query2 = { userEmail: { $in: followingEmails } };
+    if (result?.length) {
+      const followingEmails = result.map(
+        (follower) => follower.followingEmail
+      );
+      const query2 = { userEmail: { $in: followingEmails } };
 
-          // Add sorting by "createdAt" in descending order and pagination using skip and limit
-          const followingPosts = await postsCollection
-            .find(query2)
-            .sort({ createdAt: -1 }) // Sort by latest "createdAt" first
-            .skip(skip)
-            .limit(limit)
-            .toArray();
+      // Add sorting by "createdAt" in descending order and pagination using skip and limit
+      const followingPosts = await postsCollection
+        .find(query2)
+        .sort({ createdAt: -1 }) // Sort by latest "createdAt" first
+        .skip(skip)
+        .limit(limit)
+        .toArray();
 
-          res.send(followingPosts);
-        } else {
-          res.send([]);
-        }
-      } catch (error) {
-        res.status(500).send({ message: "Error fetching following posts", error });
-      }
-    });
+      res.send(followingPosts);
+    } else {
+      res.send([]);
+    }
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching following posts", error });
+  }
+});
 
 
     // poll
