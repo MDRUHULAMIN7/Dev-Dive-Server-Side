@@ -1459,8 +1459,8 @@ async function run() {
 
         const dislikes = Array.isArray(post.dislikes) ? post.dislikes : [];
 
-        const isDisLikedruhul = dislikes.includes(userId); // Check if user has liked the post
-        const dislikesCount = dislikes.length; // Get the number of likes
+        const isDisLikedruhul = dislikes.includes(userId); 
+        const dislikesCount = dislikes.length; 
 
         res.json({
           isDisLiked: isDisLikedruhul,
