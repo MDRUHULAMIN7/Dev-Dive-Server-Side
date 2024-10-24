@@ -6,7 +6,8 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
-const allowedOrigin = process.env.ALLOWED_ORIGINS;
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+// const allowedOrigins = process.env.ALLOWED_ORIGINS;
 const localhostRegex = /^http:\/\/localhost:\d{4}$/;
 const SSLCommerzPayment = require("sslcommerz-lts");
 const store_id = process.env.STORE_ID;
@@ -15,43 +16,34 @@ const is_live = false;
 
 // Middleware
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin || "null";
-  console.log("Received CORS request from origin:", origin);
+app.use(
+  cors((req, callback) => {
+    const origin = req.headers.origin || "null";
 
-  const isPaymentRequest =
-    origin === "null" &&
-    (req.path.startsWith("/payment/success") ||
-      req.path.startsWith("/payment/failed"));
+    const isPaymentRequest =
+      origin === "null" &&
+      (req.path.startsWith("/payment/success") ||
+        req.path.startsWith("/payment/failed"));
 
-  const isAllowed =
-    isPaymentRequest ||
-    localhostRegex.test(origin) ||
-    allowedOrigin.includes(origin);
+    const isAllowed =
+      isPaymentRequest ||
+      localhostRegex.test(origin) ||
+      allowedOrigins.includes(origin);
 
-  if (isAllowed) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    );
-
-    // Handle preflight requests
-    if (req.method === "OPTIONS") {
-      return res.sendStatus(200);
+    if (isAllowed) {
+      callback(null, {
+        origin: origin,
+        credentials: true,
+        methods: "GET, POST, PUT, DELETE, OPTIONS",
+        allowedHeaders:
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      });
+    } else {
+      console.error("CORS blocked for origin:", origin);
+      callback(new Error("Not allowed by CORS"), false);
     }
-
-    next();
-  } else {
-    console.error("CORS blocked for origin:", origin);
-    res.status(403).json({ message: "Not allowed by CORS" });
-  }
-});
+  })
+);
 
 // app.use(
 //   cors({
@@ -1316,7 +1308,6 @@ async function run() {
     app.post("/payment/success/:tranId", async (req, res) => {
       try {
         const { tranId } = req.params;
-        console.log(`Transaction ID: ${tranId}`); // For debugging
 
         const paymentData = await paymentDataCollection.findOne({
           tran_id: tranId,
@@ -1336,8 +1327,6 @@ async function run() {
           { $set: { userType: "premium" } }
         );
 
-        console.log(result, result2); // For debugging
-
         if (result.modifiedCount > 0 && result2.acknowledged) {
           res.redirect(
             `${process.env.BASE_URL}/premium-success/${encodeURIComponent(
@@ -1355,7 +1344,6 @@ async function run() {
     // payment failed
     app.post("/payment/failed/:tranId", async (req, res) => {
       const { tranId } = req.params;
-      console.log(`Transaction ID: ${tranId}`); // For debugging
 
       const result = await paymentDataCollection.deleteOne({ tran_id: tranId });
 
