@@ -65,6 +65,7 @@ async function run() {
     const messagesCollection = database.collection("messages");
     const archiveDataCollection = database.collection("archiveData");
     const reportDataCollection = database.collection("reportData");
+    const notificationsCollection= database.collection("notifications")
     const paymentDataCollection = database.collection("paymentData");
     const mentorDataCollection = database.collection("mentorData");
 
@@ -303,7 +304,41 @@ async function run() {
         res.status(500).json({ message: "Failed to add reply" });
       }
     });
+    app.post("/postNotification", async(req,res)=>{
+      try {
+        const {
+          userEmail,
+          message,
+          isRead,
+          relatedPostId,
+          relatedUserEmail,
+          relatedUserName,
+          relatedUserPhoto,
+          type,
+        } = req.body;
 
+        // Insert the post into MongoDB
+        const result = await notificationsCollection.insertOne({
+          userEmail,
+          message,
+          isRead,
+          relatedPostId,
+          relatedUserEmail,
+          relatedUserName,
+          relatedUserPhoto,
+          type,
+          createdAt: new Date(), // Optional: To track when the post was created
+        });
+
+        res.status(200).json({
+          message: "notification added successfully",
+          postId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error adding notification:", error);
+        res.status(500).json({ message: "Failed to add notification" });
+      }
+    })
     app.get("/getComments/:id", async (req, res) => {
       const id = req.params.id;
       // const query = { contentId: new ObjectId(id)};
@@ -315,6 +350,18 @@ async function run() {
       const result = await commentsCollection.find(query).toArray();
       res.send(result);
     });
+
+    app.get("/getNotifications/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email)
+      const query = {
+        userEmail: email
+      };
+      const result = await notificationsCollection.find(query).sort({ _id: -1 }).toArray();
+      res.send(result);
+      console.log(result)
+    });
+
     app.get("/getPost/:id", async (req, res) => {
       const id = req.params.id;
       // const query = { contentId: new ObjectId(id)};
@@ -931,6 +978,22 @@ async function run() {
       const { id } = req.params;
       const query = { _id: new ObjectId(id) };
       const result = await postsCollection.deleteOne(query);
+      res.send(result);
+    });
+    //  delete Notification
+
+    app.delete("/deleteNotification/:id", async (req, res) => {
+      const { id } = req.params;
+      // console.log(id)
+      const query = { _id: new ObjectId(id) };
+      const result = await notificationsCollection.deleteOne(query);
+      res.send(result);
+    });
+    app.delete("/deleteAllNotification/:email", async (req, res) => {
+      const { email } = req.params;
+      console.log(email)
+      const query = { userEmail : email };
+      const result = await notificationsCollection.deleteMany(query);
       res.send(result);
     });
 
