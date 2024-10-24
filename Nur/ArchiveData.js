@@ -5,7 +5,7 @@ module.exports = (archiveDataCollection) => {
   router.get("/getIndividualArchiveData", async (req, res) => {
     try {
       const { userEmail } = req.query;
-      console.log("Received userEmail to get data:", userEmail);
+      // console.log("Received userEmail to get data:", userEmail);
 
       if (!userEmail) {
         return res.status(400).json({ message: "userEmail is required" });
