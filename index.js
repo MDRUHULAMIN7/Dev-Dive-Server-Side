@@ -6,7 +6,8 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
-const allowedOrigin = process.env.ALLOWED_ORIGINS;
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+// const allowedOrigins = process.env.ALLOWED_ORIGINS;
 const localhostRegex = /^http:\/\/localhost:\d{4}$/;
 const SSLCommerzPayment = require("sslcommerz-lts");
 const store_id = process.env.STORE_ID;
@@ -14,6 +15,35 @@ const store_passwd = process.env.STORE_PASS;
 const is_live = false;
 
 // Middleware
+
+app.use(
+  cors((req, callback) => {
+    const origin = req.headers.origin || "null";
+
+    const isPaymentRequest =
+      origin === "null" &&
+      (req.path.startsWith("/payment/success") ||
+        req.path.startsWith("/payment/failed"));
+
+    const isAllowed =
+      isPaymentRequest ||
+      localhostRegex.test(origin) ||
+      allowedOrigins.includes(origin);
+
+    if (isAllowed) {
+      callback(null, {
+        origin: origin,
+        credentials: true,
+        methods: "GET, POST, PUT, DELETE, OPTIONS",
+        allowedHeaders:
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      });
+    } else {
+      console.error("CORS blocked for origin:", origin);
+      callback(new Error("Not allowed by CORS"), false);
+    }
+  })
+);
 
 // app.use(
 //   cors({
@@ -29,8 +59,7 @@ const is_live = false;
 //   })
 // );
 
-app.use(cors());
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
 
 // mongodb
@@ -426,7 +455,7 @@ async function run() {
       res.send(result);
     });
 
-    // get users posts 
+    // get users posts
 
     app.get("/user-posts/:email", async (req, res) => {
       const email = req.params.email;
@@ -1034,7 +1063,6 @@ async function run() {
     // create jwt token
     app.post("/jwt", async (req, res) => {
       const user = req.body;
-      console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "1d",
       });
@@ -1342,7 +1370,6 @@ async function run() {
     app.post("/payment/success/:tranId", async (req, res) => {
       try {
         const { tranId } = req.params;
-        console.log(`Transaction ID: ${tranId}`); // For debugging
 
         const paymentData = await paymentDataCollection.findOne({
           tran_id: tranId,
@@ -1362,8 +1389,6 @@ async function run() {
           { $set: { userType: "premium" } }
         );
 
-        console.log(result, result2); // For debugging
-
         if (result.modifiedCount > 0 && result2.acknowledged) {
           res.redirect(
             `${process.env.BASE_URL}/premium-success/${encodeURIComponent(
@@ -1381,7 +1406,6 @@ async function run() {
     // payment failed
     app.post("/payment/failed/:tranId", async (req, res) => {
       const { tranId } = req.params;
-      console.log(`Transaction ID: ${tranId}`); // For debugging
 
       const result = await paymentDataCollection.deleteOne({ tran_id: tranId });
 
@@ -1401,7 +1425,6 @@ async function run() {
     });
     // get payment history for a admin
     app.get("/get-payment-history", async (req, res) => {
-
       const paymentHistory = await paymentDataCollection.find().toArray();
       res.send(paymentHistory);
     });
@@ -1569,11 +1592,9 @@ async function run() {
           likesCount,
         });
       } catch (error) {
-
         res.status(500).json({ message: "An error occurred." });
       }
     });
-
 
     // applay mentor
 
@@ -1587,61 +1608,72 @@ async function run() {
       };
       const result = await mentorDataCollection.insertOne(newMentor);
       res.send(result);
-    })
+    });
 
-    app.get('/get-apply-mentor', async (req, res) => {
-      const result = await mentorDataCollection.find().toArray()
+    app.get("/get-apply-mentor", async (req, res) => {
+      const result = await mentorDataCollection.find().toArray();
       res.send(result);
-    })
+    });
 
-
-
-    app.put('/make-mentor/:id', async (req, res) => {
+    app.put("/make-mentor/:id", async (req, res) => {
       const userId = req.params.id;
-    
+
       try {
         // Find and update the user's role to 'mentor' in usersCollection
         const filter = { _id: new ObjectId(userId) };
         const updateUserDoc = {
           $set: {
-            role: 'mentor',
+            role: "mentor",
           },
         };
-    
-        const userResult = await usersCollection.updateOne(filter, updateUserDoc);
-    
+
+        const userResult = await usersCollection.updateOne(
+          filter,
+          updateUserDoc
+        );
+
         if (userResult.matchedCount === 0) {
-          return res.status(404).send({ message: 'User not found in usersCollection' });
+          return res
+            .status(404)
+            .send({ message: "User not found in usersCollection" });
         }
-    
+
         // Find and update the user's status to 'mentor' in mentorDataCollection
 
-        const filter2 = {userId };
+        const filter2 = { userId };
         const updateMentorDoc = {
-
           $set: {
-            status: 'mentor',
+            status: "mentor",
           },
         };
-    
-        const mentorResult = await mentorDataCollection.updateOne(filter2, updateMentorDoc);
-    
+
+        const mentorResult = await mentorDataCollection.updateOne(
+          filter2,
+          updateMentorDoc
+        );
+
         if (mentorResult.matchedCount === 0) {
-          return res.status(404).send({ message: 'Mentor data not found in mentorDataCollection' });
+          return res
+            .status(404)
+            .send({ message: "Mentor data not found in mentorDataCollection" });
         }
-    
-        console.log('User update result:', userResult);
-        console.log('Mentor update result:', mentorResult);
-    
-        res.send({ message: 'User role updated to mentor and mentor status set' });
+
+        console.log("User update result:", userResult);
+        console.log("Mentor update result:", mentorResult);
+
+        res.send({
+          message: "User role updated to mentor and mentor status set",
+        });
       } catch (error) {
         console.error(error);
-        res.status(500).send({ message: 'Error updating user role or mentor status' });
+        res
+          .status(500)
+          .send({ message: "Error updating user role or mentor status" });
       }
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log("DevDive successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("DevDive successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
   }
