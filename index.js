@@ -1000,7 +1000,6 @@ async function run() {
     // create jwt token
     app.post("/jwt", async (req, res) => {
       const user = req.body;
-      console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "1d",
       });
@@ -1610,8 +1609,8 @@ async function run() {
       }
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log("DevDive successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("DevDive successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
   }
