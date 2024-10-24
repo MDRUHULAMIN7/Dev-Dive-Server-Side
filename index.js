@@ -93,7 +93,7 @@ async function run() {
     const SignModal = require("./Nur/SignModal")(usersCollection);
     const LeaderBoard = require("./Nur/LeaderBoard")(
       postsCollection,
-      likesCollection,
+      usersCollection,
       commentsCollection
     );
     const ArchiveData = require("./Nur/ArchiveData")(archiveDataCollection);
@@ -379,7 +379,7 @@ async function run() {
         .sort({ _id: -1 })
         .toArray();
       res.send(result);
-      console.log(result);
+      // console.log("getNotifications", result);
     });
 
     app.get("/getPost/:id", async (req, res) => {
@@ -746,14 +746,14 @@ async function run() {
       }
     });
 
- 
+
     app.post("/follow/:id", async (req, res) => {
       const session = client.startSession(); // Start a session to maintain atomicity
-    
+
       try {
         const { id } = req.params;
         const user = req.body.newuser;
-    
+
         // Validate user input and ObjectId
         if (!user || !user.email) {
           return res.status(400).send({ message: "Invalid user data" });
@@ -761,28 +761,28 @@ async function run() {
         if (!ObjectId.isValid(id)) {
           return res.status(400).send({ message: "Invalid post ID" });
         }
-    
+
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
-    
+
         // Fetch the post details by postId
         const post = await postsCollection.findOne({ _id: new ObjectId(id) });
-    
+
         if (!post) {
           return res.status(404).send({ message: "Post not found" });
         }
-    
+
         // Define query to check if the user is already following the post's author
         const queryForExistingFollow = {
           postId: id,
           followerEmail: user.email,
         };
         const queryForPostOwner = { email: post.userEmail };
-    
+
         await session.startTransaction(); // Start transaction
-    
+
         const existingFollow = await followersCollection.findOne(queryForExistingFollow, { session });
-    
+
         if (existingFollow) {
           // Unfollow logic
           await followersCollection.deleteOne(queryForExistingFollow, { session });
@@ -791,7 +791,7 @@ async function run() {
             { $inc: { followers: -1 } },
             { session }
           );
-    
+
           await session.commitTransaction();
           return res.status(200).send({ message: "Unfollowed successfully" });
         } else {
@@ -801,7 +801,7 @@ async function run() {
             await session.abortTransaction(); // Abort if follow was added during the transaction
             return res.status(409).send({ message: "Already following" });
           }
-    
+
           const followInfo = {
             following: post.username,
             followingEmail: post.userEmail,
@@ -812,14 +812,14 @@ async function run() {
             followerPhoto: user.photo,
             followTime: formattedDateTime,
           };
-    
+
           await followersCollection.insertOne(followInfo, { session });
           await usersCollection.updateOne(
             queryForPostOwner,
             { $inc: { followers: 1 } },
             { session }
           );
-    
+
           await session.commitTransaction();
           return res.status(200).send({ message: "Followed successfully" });
         }
@@ -831,7 +831,7 @@ async function run() {
         session.endSession();
       }
     });
-    
+
 
     // get followers
 
@@ -1578,12 +1578,12 @@ async function run() {
 
     app.post("/applay-mentor", async (req, res) => {
       const  mentorInfo  = req.body;
-      console.log("mentorInfo", mentorInfo);
+      // console.log("mentorInfo", mentorInfo);
       const res1 = await mentorDataCollection.findOne({ useremail: mentorInfo.useremail});
       if(res1){
         return res.send({message:"You have already applied"});
       }
-        
+
         const newMentor = {
           ...mentorInfo,
           status: "pending",
@@ -1599,7 +1599,7 @@ async function run() {
       else{
         res.send({message:"You can apply now ."})
       }
-      
+
     })
 
     app.get("/get-apply-mentor", async (req, res) => {
@@ -1666,8 +1666,8 @@ async function run() {
       }
     });
 
-    // await client.db("admin").command({ ping: 1 });
-    // console.log("DevDive successfully connected to MongoDB!");
+    await client.db("admin").command({ ping: 1 });
+    console.log("DevDive successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
   }
