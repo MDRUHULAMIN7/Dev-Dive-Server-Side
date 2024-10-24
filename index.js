@@ -15,6 +15,44 @@ const is_live = false;
 
 // Middleware
 
+app.use((req, res, next) => {
+  const origin = req.headers.origin || "null";
+  console.log("Received CORS request from origin:", origin);
+
+  const isPaymentRequest =
+    origin === "null" &&
+    (req.path.startsWith("/payment/success") ||
+      req.path.startsWith("/payment/failed"));
+
+  const isAllowed =
+    isPaymentRequest ||
+    localhostRegex.test(origin) ||
+    allowedOrigin.includes(origin);
+
+  if (isAllowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+
+    // Handle preflight requests
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+
+    next();
+  } else {
+    console.error("CORS blocked for origin:", origin);
+    res.status(403).json({ message: "Not allowed by CORS" });
+  }
+});
+
 // app.use(
 //   cors({
 //     origin: (origin, callback) => {
@@ -29,8 +67,7 @@ const is_live = false;
 //   })
 // );
 
-app.use(cors());
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
 
 // mongodb
@@ -379,7 +416,7 @@ async function run() {
       res.send(result);
     });
 
-    // get users posts 
+    // get users posts
 
     app.get("/user-posts/:email", async (req, res) => {
       const email = req.params.email;
@@ -1338,7 +1375,6 @@ async function run() {
     });
     // get payment history for a admin
     app.get("/get-payment-history", async (req, res) => {
-
       const paymentHistory = await paymentDataCollection.find().toArray();
       res.send(paymentHistory);
     });
@@ -1506,11 +1542,9 @@ async function run() {
           likesCount,
         });
       } catch (error) {
-
         res.status(500).json({ message: "An error occurred." });
       }
     });
-
 
     // applay mentor
 
@@ -1524,56 +1558,67 @@ async function run() {
       };
       const result = await mentorDataCollection.insertOne(newMentor);
       res.send(result);
-    })
+    });
 
-    app.get('/get-apply-mentor', async (req, res) => {
-      const result = await mentorDataCollection.find().toArray()
+    app.get("/get-apply-mentor", async (req, res) => {
+      const result = await mentorDataCollection.find().toArray();
       res.send(result);
-    })
+    });
 
-
-
-    app.put('/make-mentor/:id', async (req, res) => {
+    app.put("/make-mentor/:id", async (req, res) => {
       const userId = req.params.id;
-    
+
       try {
         // Find and update the user's role to 'mentor' in usersCollection
         const filter = { _id: new ObjectId(userId) };
         const updateUserDoc = {
           $set: {
-            role: 'mentor',
+            role: "mentor",
           },
         };
-    
-        const userResult = await usersCollection.updateOne(filter, updateUserDoc);
-    
+
+        const userResult = await usersCollection.updateOne(
+          filter,
+          updateUserDoc
+        );
+
         if (userResult.matchedCount === 0) {
-          return res.status(404).send({ message: 'User not found in usersCollection' });
+          return res
+            .status(404)
+            .send({ message: "User not found in usersCollection" });
         }
-    
+
         // Find and update the user's status to 'mentor' in mentorDataCollection
 
-        const filter2 = {userId };
+        const filter2 = { userId };
         const updateMentorDoc = {
-
           $set: {
-            status: 'mentor',
+            status: "mentor",
           },
         };
-    
-        const mentorResult = await mentorDataCollection.updateOne(filter2, updateMentorDoc);
-    
+
+        const mentorResult = await mentorDataCollection.updateOne(
+          filter2,
+          updateMentorDoc
+        );
+
         if (mentorResult.matchedCount === 0) {
-          return res.status(404).send({ message: 'Mentor data not found in mentorDataCollection' });
+          return res
+            .status(404)
+            .send({ message: "Mentor data not found in mentorDataCollection" });
         }
-    
-        console.log('User update result:', userResult);
-        console.log('Mentor update result:', mentorResult);
-    
-        res.send({ message: 'User role updated to mentor and mentor status set' });
+
+        console.log("User update result:", userResult);
+        console.log("Mentor update result:", mentorResult);
+
+        res.send({
+          message: "User role updated to mentor and mentor status set",
+        });
       } catch (error) {
         console.error(error);
-        res.status(500).send({ message: 'Error updating user role or mentor status' });
+        res
+          .status(500)
+          .send({ message: "Error updating user role or mentor status" });
       }
     });
 
