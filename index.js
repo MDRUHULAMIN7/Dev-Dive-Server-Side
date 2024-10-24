@@ -746,67 +746,62 @@ async function run() {
       }
     });
 
-    // follow / unfollow
-
+ 
     app.post("/follow/:id", async (req, res) => {
+      const session = client.startSession(); // Start a session to maintain atomicity
+    
       try {
         const { id } = req.params;
         const user = req.body.newuser;
-
+    
+        // Validate user input and ObjectId
         if (!user || !user.email) {
           return res.status(400).send({ message: "Invalid user data" });
         }
-
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid post ID" });
+        }
+    
         const now = Date.now();
         const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
-
+    
         // Fetch the post details by postId
         const post = await postsCollection.findOne({ _id: new ObjectId(id) });
-
+    
         if (!post) {
           return res.status(404).send({ message: "Post not found" });
         }
-
-        // Check if the user is already following the post's author
+    
+        // Define query to check if the user is already following the post's author
         const queryForExistingFollow = {
           postId: id,
           followerEmail: user.email,
         };
-
-        const existingFollow = await followersCollection.findOne(
-          queryForExistingFollow
-        );
         const queryForPostOwner = { email: post.userEmail };
-
+    
+        await session.startTransaction(); // Start transaction
+    
+        const existingFollow = await followersCollection.findOne(queryForExistingFollow, { session });
+    
         if (existingFollow) {
-          // Unfollow logic: delete the follow record and decrement follower count
-          const session = client.startSession(); // Start a session to ensure atomicity
-          try {
-            session.startTransaction();
-
-            await followersCollection.deleteOne(queryForExistingFollow, {
-              session,
-            });
-            await usersCollection.updateOne(
-              queryForPostOwner,
-              {
-                $inc: {
-                  followers: -1,
-                },
-              },
-              { session }
-            );
-
-            await session.commitTransaction();
-            return res.status(200).send({ message: "Unfollowed successfully" });
-          } catch (error) {
-            await session.abortTransaction();
-            throw error;
-          } finally {
-            session.endSession();
-          }
+          // Unfollow logic
+          await followersCollection.deleteOne(queryForExistingFollow, { session });
+          await usersCollection.updateOne(
+            queryForPostOwner,
+            { $inc: { followers: -1 } },
+            { session }
+          );
+    
+          await session.commitTransaction();
+          return res.status(200).send({ message: "Unfollowed successfully" });
         } else {
-          // Follow logic: insert a new follower record and increment follower count
+          // Follow logic: Check once more to avoid duplicate follow
+          const followAlreadyExists = await followersCollection.findOne(queryForExistingFollow, { session });
+          if (followAlreadyExists) {
+            await session.abortTransaction(); // Abort if follow was added during the transaction
+            return res.status(409).send({ message: "Already following" });
+          }
+    
           const followInfo = {
             following: post.username,
             followingEmail: post.userEmail,
@@ -817,34 +812,26 @@ async function run() {
             followerPhoto: user.photo,
             followTime: formattedDateTime,
           };
-
-          const session = client.startSession(); // Start a session for follow logic
-          try {
-            session.startTransaction();
-
-            await followersCollection.insertOne(followInfo, { session });
-            await usersCollection.updateOne(
-              queryForPostOwner,
-              { $inc: { followers: 1 } },
-              { session }
-            );
-
-            await session.commitTransaction();
-            return res.status(200).send({ message: "Followed successfully" });
-          } catch (error) {
-            await session.abortTransaction();
-            throw error;
-          } finally {
-            session.endSession();
-          }
+    
+          await followersCollection.insertOne(followInfo, { session });
+          await usersCollection.updateOne(
+            queryForPostOwner,
+            { $inc: { followers: 1 } },
+            { session }
+          );
+    
+          await session.commitTransaction();
+          return res.status(200).send({ message: "Followed successfully" });
         }
       } catch (error) {
         console.error("Error in /follow/:id:", error);
-        res
-          .status(500)
-          .send({ message: "Internal Server Error", error: error.message });
+        await session.abortTransaction();
+        res.status(500).send({ message: "Internal Server Error", error: error.message });
+      } finally {
+        session.endSession();
       }
     });
+    
 
     // get followers
 
@@ -1513,7 +1500,7 @@ async function run() {
         });
       } catch (error) {
         console.error("Error liking/unliking post:", error);
-        res.status(500).json({ message: "An error occurred." });
+        res.status(500).json({ message: "An error occurred." })
       }
     });
 
@@ -1590,21 +1577,39 @@ async function run() {
     // applay mentor
 
     app.post("/applay-mentor", async (req, res) => {
-      const mentorInfo = req.body.mentorInfo;
+      const  mentorInfo  = req.body;
       console.log("mentorInfo", mentorInfo);
-
-      const newMentor = {
-        mentorInfo,
-        status: "pending",
-      };
-      const result = await mentorDataCollection.insertOne(newMentor);
-      res.send(result);
-    });
+      const res1 = await mentorDataCollection.findOne({ useremail: mentorInfo.useremail});
+      if(res1){
+        return res.send({message:"You have already applied"});
+      }
+        
+        const newMentor = {
+          ...mentorInfo,
+          status: "pending",
+        };
+        const result = await mentorDataCollection.insertOne(newMentor);
+        res.send(result);
+    })
+    app.get('/get-mentor/:email', async (req, res) => {
+      const email = req.params.email;
+      const result = await mentorDataCollection.findOne({ useremail: email});
+      if(result){
+      res.send({message:"You have already applied"});}
+      else{
+        res.send({message:"You can apply now ."})
+      }
+      
+    })
 
     app.get("/get-apply-mentor", async (req, res) => {
       const result = await mentorDataCollection.find().toArray();
       res.send(result);
-    });
+    })
+    app.get('/get-all-payments', async (req, res) => {
+      const result = await paymentDataCollection.find().toArray()
+      res.send(result);
+    })
 
     app.put("/make-mentor/:id", async (req, res) => {
       const userId = req.params.id;
@@ -1656,10 +1661,8 @@ async function run() {
           message: "User role updated to mentor and mentor status set",
         });
       } catch (error) {
-        console.error(error);
-        res
-          .status(500)
-          .send({ message: "Error updating user role or mentor status" });
+        console.error(error)
+        res.status(500).send({ message: 'Error updating user role or mentor status' });
       }
     });
 
