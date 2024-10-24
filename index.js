@@ -16,38 +16,38 @@ const is_live = false;
 
 // Middleware
 
-app.use(
-  cors((req, callback) => {
-    const origin = req.headers.origin || "null";
+// app.use(
+//   cors((req, callback) => {
+//     const origin = req.headers.origin || "null";
 
-    const isPaymentRequest =
-      origin === "null" &&
-      (req.path.startsWith("/payment/success") ||
-        req.path.startsWith("/payment/failed"));
+//     const isPaymentRequest =
+//       origin === "null" &&
+//       (req.path.startsWith("/payment/success") ||
+//         req.path.startsWith("/payment/failed"));
 
-    const isAllowed =
-      isPaymentRequest ||
-      localhostRegex.test(origin) ||
-      allowedOrigins.includes(origin);
+//     const isAllowed =
+//       isPaymentRequest ||
+//       localhostRegex.test(origin) ||
+//       allowedOrigins.includes(origin);
 
-    if (isAllowed) {
-      callback(null, {
-        origin: origin,
-        credentials: true,
-        methods: "GET, POST, PUT, DELETE, OPTIONS",
-        allowedHeaders:
-          "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-      });
-    } else {
-      console.error("CORS blocked for origin:", origin);
-      callback(new Error("Not allowed by CORS"), false);
-    }
-  })
-);
+//     if (isAllowed) {
+//       callback(null, {
+//         origin: origin,
+//         credentials: true,
+//         methods: "GET, POST, PUT, DELETE, OPTIONS",
+//         allowedHeaders:
+//           "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+//       });
+//     } else {
+//       console.error("CORS blocked for origin:", origin);
+//       callback(new Error("Not allowed by CORS"), false);
+//     }
+//   })
+// );
 
-// app.use(cors())
+app.use(cors())
 
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+// app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
 
 // mongodb
@@ -1635,12 +1635,13 @@ async function run() {
       res.send(result);
     })
 
-    app.put("/make-mentor/:id", async (req, res) => {
-      const userId = req.params.id;
+    app.put("/make-mentor/:useremail", async (req, res) => {
+      const 
+      useremail = req.params.useremail;
 
       try {
         // Find and update the user's role to 'mentor' in usersCollection
-        const filter = { _id: new ObjectId(userId) };
+        const filter = { email: useremail};
         const updateUserDoc = {
           $set: {
             role: "mentor",
@@ -1660,7 +1661,8 @@ async function run() {
 
         // Find and update the user's status to 'mentor' in mentorDataCollection
 
-        const filter2 = { userId };
+        const filter2 = {
+          useremail};
         const updateMentorDoc = {
           $set: {
             status: "mentor",
@@ -1689,9 +1691,9 @@ async function run() {
         res.status(500).send({ message: 'Error updating user role or mentor status' });
       }
     });
-
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
+   
   } finally {
     // Ensures that the client will close when you finish/error
   }
