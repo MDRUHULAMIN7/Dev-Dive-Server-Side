@@ -1537,7 +1537,7 @@ async function run() {
       const userId = req.params.id;
     
       try {
-        // Find and update the user's role to 'mentor' in usersCollection
+        //  user's role to 'mentor' in usersCollection
         const filter = { _id: new ObjectId(userId) };
         const updateUserDoc = {
           $set: {
@@ -1551,7 +1551,7 @@ async function run() {
           return res.status(404).send({ message: 'User not found in usersCollection' });
         }
     
-        // Find and update the user's status to 'mentor' in mentorDataCollection
+        //  user's status to 'mentor' in mentorDataCollection
 
         const filter2 = {userId };
         const updateMentorDoc = {
