@@ -45,19 +45,7 @@ app.use(
   })
 );
 
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin || origin === allowedOrigin || localhostRegex.test(origin)) {
-//         callback(null, true);
-//       } else {
-//         callback(new Error("Not allowed by CORS"));
-//       }
-//     },
-//     credentials: true,
-//     optionSuccessStatus: 200,
-//   })
-// );
+// app.use(cors())
 
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
@@ -94,7 +82,7 @@ async function run() {
     const messagesCollection = database.collection("messages");
     const archiveDataCollection = database.collection("archiveData");
     const reportDataCollection = database.collection("reportData");
-    const notificationsCollection= database.collection("notifications")
+    const notificationsCollection = database.collection("notifications");
     const paymentDataCollection = database.collection("paymentData");
     const mentorDataCollection = database.collection("mentorData");
 
@@ -333,7 +321,7 @@ async function run() {
         res.status(500).json({ message: "Failed to add reply" });
       }
     });
-    app.post("/postNotification", async(req,res)=>{
+    app.post("/postNotification", async (req, res) => {
       try {
         const {
           userEmail,
@@ -367,7 +355,7 @@ async function run() {
         console.error("Error adding notification:", error);
         res.status(500).json({ message: "Failed to add notification" });
       }
-    })
+    });
     app.get("/getComments/:id", async (req, res) => {
       const id = req.params.id;
       // const query = { contentId: new ObjectId(id)};
@@ -382,13 +370,16 @@ async function run() {
 
     app.get("/getNotifications/:email", async (req, res) => {
       const email = req.params.email;
-      console.log(email)
+      console.log(email);
       const query = {
-        userEmail: email
+        userEmail: email,
       };
-      const result = await notificationsCollection.find(query).sort({ _id: -1 }).toArray();
+      const result = await notificationsCollection
+        .find(query)
+        .sort({ _id: -1 })
+        .toArray();
       res.send(result);
-      console.log(result)
+      console.log(result);
     });
 
     app.get("/getPost/:id", async (req, res) => {
@@ -464,19 +455,19 @@ async function run() {
     });
 
     // get likes
-    app.get("/get-likes", async (req, res) => {
-      const result = await likesCollection.find().toArray();
-      res.send(result);
-    });
+    // app.get("/get-likes", async (req, res) => {
+    //   const result = await likesCollection.find().toArray();
+    //   res.send(result);
+    // });
     app.get("/getCommentLikes", async (req, res) => {
       const result = await commentLikesCollection.find().toArray();
       res.send(result);
     });
     // get likes
-    app.get("/get-dislikes", async (req, res) => {
-      const result = await dislikesCollection.find().toArray();
-      res.send(result);
-    });
+    // app.get("/get-dislikes", async (req, res) => {
+    //   const result = await dislikesCollection.find().toArray();
+    //   res.send(result);
+    // });
     app.get("/getCommentDislikes", async (req, res) => {
       const result = await commentDislikesCollection.find().toArray();
       res.send(result);
@@ -491,71 +482,71 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/like/:id", async (req, res) => {
-      try {
-        const { id } = req.params; // Post ID from params
-        const user = req.body.newUser; // User info from request body
+    // app.post("/like/:id", async (req, res) => {
+    //   try {
+    //     const { id } = req.params; // Post ID from params
+    //     const user = req.body.newUser; // User info from request body
 
-        const now = Date.now();
-        const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
+    //     const now = Date.now();
+    //     const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
 
-        const query1 = { _id: new ObjectId(id) }; // Find the post by ID
-        const query3 = { postId: id, email: user.email }; // Check if the user interacted with this post
+    //     const query1 = { _id: new ObjectId(id) }; // Find the post by ID
+    //     const query3 = { postId: id, email: user.email }; // Check if the user interacted with this post
 
-        const post = await postsCollection.findOne(query1); // Retrieve the post
+    //     const post = await postsCollection.findOne(query1); // Retrieve the post
 
-        if (!post) {
-          return res
-            .status(404)
-            .send({ message: "Post not found", success: false });
-        }
+    //     if (!post) {
+    //       return res
+    //         .status(404)
+    //         .send({ message: "Post not found", success: false });
+    //     }
 
-        const result5 = await likesCollection.findOne(query3); // Check if the user liked the post
-        const result6 = await dislikesCollection.findOne(query3); // Check if the user disliked the post
+    //     const result5 = await likesCollection.findOne(query3); // Check if the user liked the post
+    //     const result6 = await dislikesCollection.findOne(query3); // Check if the user disliked the post
 
-        if (result5) {
-          // If the user already liked the post, remove the like
-          await likesCollection.deleteOne(query3); // Remove like
-          await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count
-          return res.send({ message: "Like removed", success: true });
-        }
+    //     if (result5) {
+    //       // If the user already liked the post, remove the like
+    //       await likesCollection.deleteOne(query3); // Remove like
+    //       await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count
+    //       return res.send({ message: "Like removed", success: true });
+    //     }
 
-        if (result6) {
-          // If the user previously disliked, remove the dislike and add a like
-          await dislikesCollection.deleteOne(query3); // Remove dislike
-          await postsCollection.updateOne(query1, {
-            $inc: { dislikes: -1, likes: 1 },
-          }); // Update counts
+    //     if (result6) {
+    //       // If the user previously disliked, remove the dislike and add a like
+    //       await dislikesCollection.deleteOne(query3); // Remove dislike
+    //       await postsCollection.updateOne(query1, {
+    //         $inc: { dislikes: -1, likes: 1 },
+    //       }); // Update counts
 
-          const likeInfo = {
-            postId: id,
-            ...user,
-            likeTime: formattedDateTime,
-            type: "like",
-          };
-          await likesCollection.insertOne(likeInfo); // Add like
-          return res.send({
-            message: "Like added and dislike removed",
-            success: true,
-          });
-        }
+    //       const likeInfo = {
+    //         postId: id,
+    //         ...user,
+    //         likeTime: formattedDateTime,
+    //         type: "like",
+    //       };
+    //       await likesCollection.insertOne(likeInfo); // Add like
+    //       return res.send({
+    //         message: "Like added and dislike removed",
+    //         success: true,
+    //       });
+    //     }
 
-        // If the user hasn't liked or disliked yet, add a like
-        await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count
-        const likeInfo = {
-          postId: id,
-          ...user,
-          likeTime: formattedDateTime,
-          type: "like",
-        };
-        await likesCollection.insertOne(likeInfo); // Add like to collection
+    //     // If the user hasn't liked or disliked yet, add a like
+    //     await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count
+    //     const likeInfo = {
+    //       postId: id,
+    //       ...user,
+    //       likeTime: formattedDateTime,
+    //       type: "like",
+    //     };
+    //     await likesCollection.insertOne(likeInfo); // Add like to collection
 
-        res.send({ message: "Like added", success: true });
-      } catch (error) {
-        console.error("Error in like operation:", error); // Log any errors
-        res.status(500).send({ message: "An error occurred", success: false }); // Return error response
-      }
-    });
+    //     res.send({ message: "Like added", success: true });
+    //   } catch (error) {
+    //     console.error("Error in like operation:", error); // Log any errors
+    //     res.status(500).send({ message: "An error occurred", success: false }); // Return error response
+    //   }
+    // });
 
     app.post("/commentLike/:id", async (req, res) => {
       try {
@@ -1020,8 +1011,8 @@ async function run() {
     });
     app.delete("/deleteAllNotification/:email", async (req, res) => {
       const { email } = req.params;
-      console.log(email)
-      const query = { userEmail : email };
+      console.log(email);
+      const query = { userEmail: email };
       const result = await notificationsCollection.deleteMany(query);
       res.send(result);
     });
