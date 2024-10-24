@@ -1517,6 +1517,10 @@ async function run() {
     app.post("/applay-mentor", async (req, res) => {
       const  mentorInfo  = req.body;
       console.log("mentorInfo", mentorInfo);
+      const res1 = await mentorDataCollection.findOne({ useremail: mentorInfo.useremail});
+      if(res1){
+        return res.send({message:"You have already applied"});
+      }
         
         const newMentor = {
           ...mentorInfo,
@@ -1524,6 +1528,16 @@ async function run() {
         };
         const result = await mentorDataCollection.insertOne(newMentor);
         res.send(result);
+    })
+    app.get('/get-mentor/:email', async (req, res) => {
+      const email = req.params.email;
+      const result = await mentorDataCollection.findOne({ useremail: email});
+      if(result){
+      res.send({message:"You have already applied"});}
+      else{
+        res.send({message:"You can apply now ."})
+      }
+      
     })
 
     app.get('/get-apply-mentor', async (req, res) => {
