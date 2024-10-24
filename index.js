@@ -1515,11 +1515,11 @@ async function run() {
     // applay mentor
 
     app.post("/applay-mentor", async (req, res) => {
-      const  mentorInfo  = req.body.mentorInfo;
+      const  mentorInfo  = req.body;
       console.log("mentorInfo", mentorInfo);
         
         const newMentor = {
-          mentorInfo,
+          ...mentorInfo,
           status: "pending",
         };
         const result = await mentorDataCollection.insertOne(newMentor);
