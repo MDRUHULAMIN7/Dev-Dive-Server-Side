@@ -381,6 +381,16 @@ async function run() {
       res.send(result);
       // console.log("getNotifications", result);
     });
+    app.get("/getSingleUser/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email)
+      const query = {
+        email: email
+      };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+      console.log(result)
+    });
 
     app.get("/getPost/:id", async (req, res) => {
       const id = req.params.id;
@@ -995,6 +1005,20 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await notificationsCollection.deleteOne(query);
       res.send(result);
+      
+    });
+    app.delete("/deleteUnfollowNotification", async (req, res) => {
+      try{
+        const { userEmail, relatedUserEmail} = req.query;
+        console.log(userEmail, relatedUserEmail);
+        const query = { userEmail: userEmail, relatedUserEmail: relatedUserEmail };
+        const result = await notificationsCollection.deleteMany(query);
+        res.send(result);
+      }
+      catch (error) {
+        console.error("Error adding notification:", error);
+        res.status(500).json({ message: "Failed to delete notification" });
+      }
     });
     app.delete("/deleteAllNotification/:email", async (req, res) => {
       const { email } = req.params;
