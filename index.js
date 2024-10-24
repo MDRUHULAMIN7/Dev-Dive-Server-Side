@@ -1544,6 +1544,10 @@ async function run() {
       const result = await mentorDataCollection.find().toArray()
       res.send(result);
     })
+    app.get('/get-all-payments', async (req, res) => {
+      const result = await paymentDataCollection.find().toArray()
+      res.send(result);
+    })
 
 
 
