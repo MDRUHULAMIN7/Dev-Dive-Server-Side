@@ -1494,11 +1494,11 @@ async function run() {
           return res.status(404).json({ message: "Post not found." });
         }
 
-        // Ensure 'likes' is treated as an array (even if it's missing)
+        
         const likes = Array.isArray(post.likes) ? post.likes : [];
 
-        const isLiked = likes.includes(userId); // Check if user has liked the post
-        const likesCount = likes.length; // Get the number of likes
+        const isLiked = likes.includes(userId); 
+        const likesCount = likes.length; 
 
         // Send the response
         res.json({
