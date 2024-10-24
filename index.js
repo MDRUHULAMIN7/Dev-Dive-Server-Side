@@ -1572,7 +1572,7 @@ async function run() {
     
         res.send({ message: 'User role updated to mentor and mentor status set' });
       } catch (error) {
-        console.error(error);
+        console.error(error)
         res.status(500).send({ message: 'Error updating user role or mentor status' });
       }
     });
