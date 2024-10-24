@@ -1436,7 +1436,7 @@ async function run() {
         });
       } catch (error) {
         console.error("Error liking/unliking post:", error);
-        res.status(500).json({ message: "An error occurred." });
+        res.status(500).json({ message: "An error occurred." })
       }
     });
 
