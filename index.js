@@ -98,6 +98,10 @@ async function run() {
     );
     const ArchiveData = require("./Nur/ArchiveData")(archiveDataCollection);
     const ReportData = require("./Nur/ReportData")(reportDataCollection);
+    const LikedPostByUser = require("./Nur/LikedPostByUser")(
+      postsCollection,
+      usersCollection
+    );
 
     // Use Route
 
@@ -105,6 +109,7 @@ async function run() {
     app.use(LeaderBoard);
     app.use(ArchiveData);
     app.use(ReportData);
+    app.use(LikedPostByUser);
 
     // End Of All Operations By Nur
 
