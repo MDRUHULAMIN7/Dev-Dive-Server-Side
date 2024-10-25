@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-module.exports = (postsCollection, usersCollection, commentsCollection) => {
+module.exports = (postsCollection, commentsCollection) => {
   router.get("/leaderBoardPosts", async (req, res) => {
     try {
       const { loadAllPosts } = req.query;
@@ -10,7 +10,7 @@ module.exports = (postsCollection, usersCollection, commentsCollection) => {
       const postsPipeline = [
         {
           $project: {
-            title: 1, // Include other fields you need
+            title: 1,
             likesCount: {
               $cond: {
                 if: { $isArray: "$likes" }, // Check if likes is an array
@@ -37,6 +37,8 @@ module.exports = (postsCollection, usersCollection, commentsCollection) => {
       res.status(500).json({ message: "Failed to fetch posts" });
     }
   });
+
+  // before server structure change
 
   // router.get("/leaderBoardLikes", async (req, res) => {
   //   try {
@@ -87,61 +89,140 @@ module.exports = (postsCollection, usersCollection, commentsCollection) => {
   // });
   // const { ObjectId } = require("mongodb");
 
+  // After server structure change
+
+  // router.get("/leaderBoardLikes", async (req, res) => {
+  //   try {
+  //     const { loadAllLikes } = req.query;
+  //     console.log("loadAllLikes", loadAllLikes);
+
+  //     const likesAggregation = await postsCollection
+  //       .aggregate([
+  //         {
+  //           $unwind: "$likes",
+  //         },
+  //         {
+  //           $match: { likes: { $ne: "" } },
+  //         },
+  //         {
+  //           $group: {
+  //             _id: "$likes",
+  //             count: { $sum: 1 },
+  //           },
+  //         },
+  //         {
+  //           $sort: { count: -1 },
+  //         },
+  //         ...(loadAllLikes === "true" ? [] : [{ $limit: 5 }]),
+  //         {
+  //           $addFields: {
+  //             userId: { $toObjectId: "$_id" },
+  //           },
+  //         },
+  //         {
+  //           $lookup: {
+  //             from: "users",
+  //             localField: "userId",
+  //             foreignField: "_id",
+  //             as: "userDetails",
+  //           },
+  //         },
+  //         {
+  //           $unwind: {
+  //             path: "$userDetails",
+  //             preserveNullAndEmptyArrays: true,
+  //           },
+  //         },
+  //         {
+  //           $project: {
+  //             _id: 1,
+  //             count: 1,
+  //             "userDetails.name": {
+  //               $ifNull: ["$userDetails.name", "Unknown"],
+  //             },
+  //             "userDetails.email": { $ifNull: ["$userDetails.email", "N/A"] },
+  //           },
+  //         },
+  //       ])
+  //       .toArray();
+
+  //     console.log("likesAggregation", likesAggregation);
+  //     res.status(200).send(likesAggregation);
+  //   } catch (error) {
+  //     console.error("Error fetching leaderBoard likes:", error);
+  //     res.status(500).send({ message: "Failed to fetch leaderBoard likes" });
+  //   }
+  // });
+
+  // latest
+
   router.get("/leaderBoardLikes", async (req, res) => {
     try {
       const { loadAllLikes } = req.query;
-      console.log("loadAllLikes", loadAllLikes);
+      console.log("loadAllLikes query param:", loadAllLikes);
+
+      const aggregationPipeline = [
+        {
+          $unwind: "$likes", // Unwind the likes array
+        },
+        {
+          $match: { likes: { $ne: "" } }, // Exclude empty likes
+        },
+        {
+          $group: {
+            _id: "$likes", // Group by user ID from likes array
+            count: { $sum: 1 }, // Count the number of likes
+          },
+        },
+        {
+          $sort: { count: -1 }, // Sort by most liked
+        },
+        {
+          $match: {
+            _id: { $type: "string", $regex: /^[a-fA-F0-9]{24}$/ }, // Ensure valid ObjectId strings
+          },
+        },
+        {
+          $addFields: {
+            userId: { $toObjectId: "$_id" }, // Convert to ObjectId
+          },
+        },
+        {
+          $lookup: {
+            from: "users", // Join with users collection
+            localField: "userId",
+            foreignField: "_id",
+            as: "userDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$userDetails",
+            preserveNullAndEmptyArrays: true, // Handle missing users gracefully
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            count: 1,
+            "userDetails.name": { $ifNull: ["$userDetails.name", "Unknown"] },
+            "userDetails.email": { $ifNull: ["$userDetails.email", "N/A"] },
+          },
+        },
+        ...(loadAllLikes === "true" ? [] : [{ $limit: 5 }]), // Apply limit if needed
+      ];
+
+      console.log("Aggregation pipeline:", JSON.stringify(aggregationPipeline));
 
       const likesAggregation = await postsCollection
-        .aggregate([
-          {
-            $unwind: "$likes",
-          },
-          {
-            $match: { likes: { $ne: "" } },
-          },
-          {
-            $group: {
-              _id: "$likes",
-              count: { $sum: 1 },
-            },
-          },
-          {
-            $sort: { count: -1 },
-          },
-          ...(loadAllLikes === "true" ? [] : [{ $limit: 5 }]),
-          {
-            $addFields: {
-              userId: { $toObjectId: "$_id" },
-            },
-          },
-          {
-            $lookup: {
-              from: "users",
-              localField: "userId",
-              foreignField: "_id",
-              as: "userDetails",
-            },
-          },
-          {
-            $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true },
-          },
-          {
-            $project: {
-              _id: 1,
-              count: 1,
-              "userDetails.name": { $ifNull: ["$userDetails.name", "Unknown"] },
-              "userDetails.email": { $ifNull: ["$userDetails.email", "N/A"] },
-            },
-          },
-        ])
+        .aggregate(aggregationPipeline)
         .toArray();
+      console.log("likesAggregation result:", likesAggregation);
 
-      console.log("likesAggregation", likesAggregation);
       res.status(200).send(likesAggregation);
     } catch (error) {
-      console.error("Error fetching leaderBoard likes:", error);
-      res.status(500).send({ message: "Failed to fetch leaderBoard likes" });
+      console.error("Error in /leaderBoardLikes:", error);
+      res.status(500).send({ message: "Failed to fetch leaderBoard likes." });
     }
   });
 
@@ -169,34 +250,6 @@ module.exports = (postsCollection, usersCollection, commentsCollection) => {
     } catch (error) {
       console.error("Error fetching leaderBoard comments:", error);
       res.status(500).send({ message: "Failed to fetch leaderBoard comments" });
-    }
-  });
-
-  router.get("/getMyLikedPosts/:email", async (req, res) => {
-    try {
-      const { email } = req.params;
-      console.log("Fetching liked posts for user email:", email);
-
-      const user = await usersCollection.findOne({ email });
-      console.log("user email", user._id.toString());
-
-      if (!user) {
-        console.log("User not found with email:", email);
-        return res.status(404).json({ message: "User not found." });
-      }
-      const userId = user._id.toString();
-      console.log("Found user ID:", userId);
-
-      // Step 2: Find posts where the user's ID is in the likes array
-      const likedPosts = await postsCollection
-        .find({ likes: userId }) // Match user ID in the likes array
-        .toArray();
-
-      console.log("Number of liked posts found:", likedPosts.length);
-      res.status(200).json(likedPosts);
-    } catch (error) {
-      console.error("Error fetching liked posts:", error);
-      res.status(500).json({ message: "Failed to fetch liked posts." });
     }
   });
 
