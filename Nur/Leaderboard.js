@@ -10,7 +10,7 @@ module.exports = (postsCollection, usersCollection, commentsCollection) => {
       const postsPipeline = [
         {
           $project: {
-            title: 1, // Include other fields you need
+            title: 1,
             likesCount: {
               $cond: {
                 if: { $isArray: "$likes" }, // Check if likes is an array

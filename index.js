@@ -16,36 +16,36 @@ const is_live = false;
 
 // Middleware
 
-// app.use(
-//   cors((req, callback) => {
-//     const origin = req.headers.origin || "null";
+app.use(
+  cors((req, callback) => {
+    const origin = req.headers.origin || "null";
 
-//     const isPaymentRequest =
-//       origin === "null" &&
-//       (req.path.startsWith("/payment/success") ||
-//         req.path.startsWith("/payment/failed"));
+    const isPaymentRequest =
+      origin === "null" &&
+      (req.path.startsWith("/payment/success") ||
+        req.path.startsWith("/payment/failed"));
 
-//     const isAllowed =
-//       isPaymentRequest ||
-//       localhostRegex.test(origin) ||
-//       allowedOrigins.includes(origin);
+    const isAllowed =
+      isPaymentRequest ||
+      localhostRegex.test(origin) ||
+      allowedOrigins.includes(origin);
 
-//     if (isAllowed) {
-//       callback(null, {
-//         origin: origin,
-//         credentials: true,
-//         methods: "GET, POST, PUT, DELETE, OPTIONS",
-//         allowedHeaders:
-//           "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-//       });
-//     } else {
-//       console.error("CORS blocked for origin:", origin);
-//       callback(new Error("Not allowed by CORS"), false);
-//     }
-//   })
-// );
+    if (isAllowed) {
+      callback(null, {
+        origin: origin,
+        credentials: true,
+        methods: "GET, POST, PUT, DELETE, OPTIONS",
+        allowedHeaders:
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      });
+    } else {
+      console.error("CORS blocked for origin:", origin);
+      callback(new Error("Not allowed by CORS"), false);
+    }
+  })
+);
 
-app.use(cors())
+// app.use(cors())
 
 // app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
@@ -1005,7 +1005,7 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await notificationsCollection.deleteOne(query);
       res.send(result);
-      
+
     });
     app.delete("/deleteUnfollowNotification", async (req, res) => {
       try{
@@ -1636,7 +1636,7 @@ async function run() {
     })
 
     app.put("/make-mentor/:useremail", async (req, res) => {
-      const 
+      const
       useremail = req.params.useremail;
 
       try {
@@ -1693,7 +1693,7 @@ async function run() {
     });
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
-   
+
   } finally {
     // Ensures that the client will close when you finish/error
   }
