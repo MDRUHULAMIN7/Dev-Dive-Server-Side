@@ -5,7 +5,7 @@ module.exports = (archiveDataCollection) => {
   router.get("/getIndividualArchiveData", async (req, res) => {
     try {
       const { userEmail } = req.query;
-      console.log("Received userEmail to get data:", userEmail);
+      // console.log("Received userEmail to get data:", userEmail);
 
       if (!userEmail) {
         return res.status(400).json({ message: "userEmail is required" });
@@ -34,12 +34,12 @@ module.exports = (archiveDataCollection) => {
     try {
       const { post_id, email } = req.query;
 
-      console.log(
-        "Checking archive status for post:",
-        post_id,
-        "and user:",
-        email
-      );
+      // console.log(
+      //   "Checking archive status for post:",
+      //   post_id,
+      //   "and user:",
+      //   email
+      // );
 
       if (!post_id || !email) {
         return res
@@ -56,7 +56,7 @@ module.exports = (archiveDataCollection) => {
         console.log("Post already archived:", post_id);
         return res.status(200).json({ archived: true });
       } else {
-        console.log("Post not archived.");
+        // console.log("Post not archived.");
         return res.status(200).json({ archived: false });
       }
     } catch (error) {
