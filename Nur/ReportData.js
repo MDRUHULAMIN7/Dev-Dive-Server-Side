@@ -6,13 +6,6 @@ module.exports = (reportDataCollection) => {
     try {
       const { post_id, email } = req.query;
 
-      // console.log(
-      //   "Checking report status for post:",
-      //   post_id,
-      //   "and user:",
-      //   email
-      // );
-
       if (!post_id || !email) {
         return res
           .status(400)
@@ -25,10 +18,8 @@ module.exports = (reportDataCollection) => {
       });
 
       if (existingReport) {
-        // console.log("Post already reported:", post_id);
         return res.status(200).json({ reported: true });
       } else {
-        // console.log("Post not reported.");
         return res.status(200).json({ reported: false });
       }
     } catch (error) {
@@ -60,7 +51,6 @@ module.exports = (reportDataCollection) => {
           .json({ message: "Post already reported by this user" });
       }
 
-      // Save the report data to your MongoDB collection
       const result = await reportDataCollection.insertOne(reportData);
 
       if (result.insertedId) {
@@ -70,7 +60,6 @@ module.exports = (reportDataCollection) => {
         throw new Error("Failed to report post");
       }
     } catch (error) {
-      // console.error("Error reporting data:", error);
       return res.status(500).json({
         message: "Failed to report post",
         error,
