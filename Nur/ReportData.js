@@ -2,6 +2,12 @@ const express = require("express");
 const router = express.Router();
 
 module.exports = (reportDataCollection) => {
+  router.get("/getAllReport", async (req, res) => {
+    const cursor = reportDataCollection.find();
+    const result = await cursor.toArray();
+    res.send(result);
+  });
+
   router.get("/checkReportStatus", async (req, res) => {
     try {
       const { post_id, email } = req.query;
@@ -29,7 +35,6 @@ module.exports = (reportDataCollection) => {
         .json({ message: "Failed to check report status." });
     }
   });
-
 
   router.post("/reportData", async (req, res) => {
     try {
