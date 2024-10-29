@@ -6,7 +6,8 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
-const allowedOrigin = process.env.ALLOWED_ORIGINS;
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+// const allowedOrigins = process.env.ALLOWED_ORIGINS;
 const localhostRegex = /^http:\/\/localhost:\d{4}$/;
 const SSLCommerzPayment = require("sslcommerz-lts");
 const store_id = process.env.STORE_ID;
@@ -16,21 +17,37 @@ const is_live = false;
 // Middleware
 
 // app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin || origin === allowedOrigin || localhostRegex.test(origin)) {
-//         callback(null, true);
-//       } else {
-//         callback(new Error("Not allowed by CORS"));
-//       }
-//     },
-//     credentials: true,
-//     optionSuccessStatus: 200,
+//   cors((req, callback) => {
+//     const origin = req.headers.origin || "null";
+
+//     const isPaymentRequest =
+//       origin === "null" &&
+//       (req.path.startsWith("/payment/success") ||
+//         req.path.startsWith("/payment/failed"));
+
+//     const isAllowed =
+//       isPaymentRequest ||
+//       localhostRegex.test(origin) ||
+//       allowedOrigins.includes(origin);
+
+//     if (isAllowed) {
+//       callback(null, {
+//         origin: origin,
+//         credentials: true,
+//         methods: "GET, POST, PUT, DELETE, OPTIONS",
+//         allowedHeaders:
+//           "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+//       });
+//     } else {
+//       console.error("CORS blocked for origin:", origin);
+//       callback(new Error("Not allowed by CORS"), false);
+//     }
 //   })
 // );
 
-app.use(cors());
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(cors())
+
+// app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
 
 // mongodb
@@ -65,6 +82,7 @@ async function run() {
     const messagesCollection = database.collection("messages");
     const archiveDataCollection = database.collection("archiveData");
     const reportDataCollection = database.collection("reportData");
+    const notificationsCollection = database.collection("notifications");
     const paymentDataCollection = database.collection("paymentData");
     const mentorDataCollection = database.collection("mentorData");
 
@@ -75,7 +93,7 @@ async function run() {
     const SignModal = require("./Nur/SignModal")(usersCollection);
     const LeaderBoard = require("./Nur/LeaderBoard")(
       postsCollection,
-      likesCollection,
+      usersCollection,
       commentsCollection
     );
     const ArchiveData = require("./Nur/ArchiveData")(archiveDataCollection);
@@ -190,8 +208,8 @@ async function run() {
           username,
           profilePicture,
           poll,
-          likes: 0,
-          dislikes: 0,
+          likes: [],
+          dislikes: [],
           comments: 0,
           createdAt: new Date(), // Optional: To track when the post was created
         });
@@ -303,7 +321,41 @@ async function run() {
         res.status(500).json({ message: "Failed to add reply" });
       }
     });
+    app.post("/postNotification", async (req, res) => {
+      try {
+        const {
+          userEmail,
+          message,
+          isRead,
+          relatedPostId,
+          relatedUserEmail,
+          relatedUserName,
+          relatedUserPhoto,
+          type,
+        } = req.body;
 
+        // Insert the post into MongoDB
+        const result = await notificationsCollection.insertOne({
+          userEmail,
+          message,
+          isRead,
+          relatedPostId,
+          relatedUserEmail,
+          relatedUserName,
+          relatedUserPhoto,
+          type,
+          createdAt: new Date(), // Optional: To track when the post was created
+        });
+
+        res.status(200).json({
+          message: "notification added successfully",
+          postId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error adding notification:", error);
+        res.status(500).json({ message: "Failed to add notification" });
+      }
+    });
     app.get("/getComments/:id", async (req, res) => {
       const id = req.params.id;
       // const query = { contentId: new ObjectId(id)};
@@ -315,6 +367,31 @@ async function run() {
       const result = await commentsCollection.find(query).toArray();
       res.send(result);
     });
+
+    app.get("/getNotifications/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = {
+        userEmail: email,
+      };
+      const result = await notificationsCollection
+        .find(query)
+        .sort({ _id: -1 })
+        .toArray();
+      res.send(result);
+      // console.log("getNotifications", result);
+    });
+    app.get("/getSingleUser/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email)
+      const query = {
+        email: email
+      };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+      console.log(result)
+    });
+
     app.get("/getPost/:id", async (req, res) => {
       const id = req.params.id;
       // const query = { contentId: new ObjectId(id)};
@@ -379,7 +456,7 @@ async function run() {
       res.send(result);
     });
 
-    // get users posts 
+    // get users posts
 
     app.get("/user-posts/:email", async (req, res) => {
       const email = req.params.email;
@@ -388,19 +465,19 @@ async function run() {
     });
 
     // get likes
-    app.get("/get-likes", async (req, res) => {
-      const result = await likesCollection.find().toArray();
-      res.send(result);
-    });
+    // app.get("/get-likes", async (req, res) => {
+    //   const result = await likesCollection.find().toArray();
+    //   res.send(result);
+    // });
     app.get("/getCommentLikes", async (req, res) => {
       const result = await commentLikesCollection.find().toArray();
       res.send(result);
     });
     // get likes
-    app.get("/get-dislikes", async (req, res) => {
-      const result = await dislikesCollection.find().toArray();
-      res.send(result);
-    });
+    // app.get("/get-dislikes", async (req, res) => {
+    //   const result = await dislikesCollection.find().toArray();
+    //   res.send(result);
+    // });
     app.get("/getCommentDislikes", async (req, res) => {
       const result = await commentDislikesCollection.find().toArray();
       res.send(result);
@@ -415,71 +492,71 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/like/:id", async (req, res) => {
-      try {
-        const { id } = req.params; // Post ID from params
-        const user = req.body.newUser; // User info from request body
+    // app.post("/like/:id", async (req, res) => {
+    //   try {
+    //     const { id } = req.params; // Post ID from params
+    //     const user = req.body.newUser; // User info from request body
 
-        const now = Date.now();
-        const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
+    //     const now = Date.now();
+    //     const formattedDateTime = format(now, "EEEE, MMMM dd, yyyy, hh:mm a");
 
-        const query1 = { _id: new ObjectId(id) }; // Find the post by ID
-        const query3 = { postId: id, email: user.email }; // Check if the user interacted with this post
+    //     const query1 = { _id: new ObjectId(id) }; // Find the post by ID
+    //     const query3 = { postId: id, email: user.email }; // Check if the user interacted with this post
 
-        const post = await postsCollection.findOne(query1); // Retrieve the post
+    //     const post = await postsCollection.findOne(query1); // Retrieve the post
 
-        if (!post) {
-          return res
-            .status(404)
-            .send({ message: "Post not found", success: false });
-        }
+    //     if (!post) {
+    //       return res
+    //         .status(404)
+    //         .send({ message: "Post not found", success: false });
+    //     }
 
-        const result5 = await likesCollection.findOne(query3); // Check if the user liked the post
-        const result6 = await dislikesCollection.findOne(query3); // Check if the user disliked the post
+    //     const result5 = await likesCollection.findOne(query3); // Check if the user liked the post
+    //     const result6 = await dislikesCollection.findOne(query3); // Check if the user disliked the post
 
-        if (result5) {
-          // If the user already liked the post, remove the like
-          await likesCollection.deleteOne(query3); // Remove like
-          await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count
-          return res.send({ message: "Like removed", success: true });
-        }
+    //     if (result5) {
+    //       // If the user already liked the post, remove the like
+    //       await likesCollection.deleteOne(query3); // Remove like
+    //       await postsCollection.updateOne(query1, { $inc: { likes: -1 } }); // Decrease like count
+    //       return res.send({ message: "Like removed", success: true });
+    //     }
 
-        if (result6) {
-          // If the user previously disliked, remove the dislike and add a like
-          await dislikesCollection.deleteOne(query3); // Remove dislike
-          await postsCollection.updateOne(query1, {
-            $inc: { dislikes: -1, likes: 1 },
-          }); // Update counts
+    //     if (result6) {
+    //       // If the user previously disliked, remove the dislike and add a like
+    //       await dislikesCollection.deleteOne(query3); // Remove dislike
+    //       await postsCollection.updateOne(query1, {
+    //         $inc: { dislikes: -1, likes: 1 },
+    //       }); // Update counts
 
-          const likeInfo = {
-            postId: id,
-            ...user,
-            likeTime: formattedDateTime,
-            type: "like",
-          };
-          await likesCollection.insertOne(likeInfo); // Add like
-          return res.send({
-            message: "Like added and dislike removed",
-            success: true,
-          });
-        }
+    //       const likeInfo = {
+    //         postId: id,
+    //         ...user,
+    //         likeTime: formattedDateTime,
+    //         type: "like",
+    //       };
+    //       await likesCollection.insertOne(likeInfo); // Add like
+    //       return res.send({
+    //         message: "Like added and dislike removed",
+    //         success: true,
+    //       });
+    //     }
 
-        // If the user hasn't liked or disliked yet, add a like
-        await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count
-        const likeInfo = {
-          postId: id,
-          ...user,
-          likeTime: formattedDateTime,
-          type: "like",
-        };
-        await likesCollection.insertOne(likeInfo); // Add like to collection
+    //     // If the user hasn't liked or disliked yet, add a like
+    //     await postsCollection.updateOne(query1, { $inc: { likes: 1 } }); // Increase like count
+    //     const likeInfo = {
+    //       postId: id,
+    //       ...user,
+    //       likeTime: formattedDateTime,
+    //       type: "like",
+    //     };
+    //     await likesCollection.insertOne(likeInfo); // Add like to collection
 
-        res.send({ message: "Like added", success: true });
-      } catch (error) {
-        console.error("Error in like operation:", error); // Log any errors
-        res.status(500).send({ message: "An error occurred", success: false }); // Return error response
-      }
-    });
+    //     res.send({ message: "Like added", success: true });
+    //   } catch (error) {
+    //     console.error("Error in like operation:", error); // Log any errors
+    //     res.status(500).send({ message: "An error occurred", success: false }); // Return error response
+    //   }
+    // });
 
     app.post("/commentLike/:id", async (req, res) => {
       try {
@@ -679,15 +756,20 @@ async function run() {
       }
     });
 
-    // follow / unfollow
 
     app.post("/follow/:id", async (req, res) => {
+      const session = client.startSession(); // Start a session to maintain atomicity
+
       try {
         const { id } = req.params;
         const user = req.body.newuser;
 
+        // Validate user input and ObjectId
         if (!user || !user.email) {
           return res.status(400).send({ message: "Invalid user data" });
+        }
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid post ID" });
         }
 
         const now = Date.now();
@@ -700,46 +782,36 @@ async function run() {
           return res.status(404).send({ message: "Post not found" });
         }
 
-        // Check if the user is already following the post's author
+        // Define query to check if the user is already following the post's author
         const queryForExistingFollow = {
           postId: id,
           followerEmail: user.email,
         };
-
-        const existingFollow = await followersCollection.findOne(
-          queryForExistingFollow
-        );
         const queryForPostOwner = { email: post.userEmail };
 
+        await session.startTransaction(); // Start transaction
+
+        const existingFollow = await followersCollection.findOne(queryForExistingFollow, { session });
+
         if (existingFollow) {
-          // Unfollow logic: delete the follow record and decrement follower count
-          const session = client.startSession(); // Start a session to ensure atomicity
-          try {
-            session.startTransaction();
+          // Unfollow logic
+          await followersCollection.deleteOne(queryForExistingFollow, { session });
+          await usersCollection.updateOne(
+            queryForPostOwner,
+            { $inc: { followers: -1 } },
+            { session }
+          );
 
-            await followersCollection.deleteOne(queryForExistingFollow, {
-              session,
-            });
-            await usersCollection.updateOne(
-              queryForPostOwner,
-              {
-                $inc: {
-                  followers: -1,
-                },
-              },
-              { session }
-            );
-
-            await session.commitTransaction();
-            return res.status(200).send({ message: "Unfollowed successfully" });
-          } catch (error) {
-            await session.abortTransaction();
-            throw error;
-          } finally {
-            session.endSession();
-          }
+          await session.commitTransaction();
+          return res.status(200).send({ message: "Unfollowed successfully" });
         } else {
-          // Follow logic: insert a new follower record and increment follower count
+          // Follow logic: Check once more to avoid duplicate follow
+          const followAlreadyExists = await followersCollection.findOne(queryForExistingFollow, { session });
+          if (followAlreadyExists) {
+            await session.abortTransaction(); // Abort if follow was added during the transaction
+            return res.status(409).send({ message: "Already following" });
+          }
+
           const followInfo = {
             following: post.username,
             followingEmail: post.userEmail,
@@ -751,33 +823,25 @@ async function run() {
             followTime: formattedDateTime,
           };
 
-          const session = client.startSession(); // Start a session for follow logic
-          try {
-            session.startTransaction();
+          await followersCollection.insertOne(followInfo, { session });
+          await usersCollection.updateOne(
+            queryForPostOwner,
+            { $inc: { followers: 1 } },
+            { session }
+          );
 
-            await followersCollection.insertOne(followInfo, { session });
-            await usersCollection.updateOne(
-              queryForPostOwner,
-              { $inc: { followers: 1 } },
-              { session }
-            );
-
-            await session.commitTransaction();
-            return res.status(200).send({ message: "Followed successfully" });
-          } catch (error) {
-            await session.abortTransaction();
-            throw error;
-          } finally {
-            session.endSession();
-          }
+          await session.commitTransaction();
+          return res.status(200).send({ message: "Followed successfully" });
         }
       } catch (error) {
         console.error("Error in /follow/:id:", error);
-        res
-          .status(500)
-          .send({ message: "Internal Server Error", error: error.message });
+        await session.abortTransaction();
+        res.status(500).send({ message: "Internal Server Error", error: error.message });
+      } finally {
+        session.endSession();
       }
     });
+
 
     // get followers
 
@@ -933,45 +997,77 @@ async function run() {
       const result = await postsCollection.deleteOne(query);
       res.send(result);
     });
+    //  delete Notification
+
+    app.delete("/deleteNotification/:id", async (req, res) => {
+      const { id } = req.params;
+      // console.log(id)
+      const query = { _id: new ObjectId(id) };
+      const result = await notificationsCollection.deleteOne(query);
+      res.send(result);
+
+    });
+    app.delete("/deleteUnfollowNotification", async (req, res) => {
+      try {
+        const { userEmail, relatedUserEmail } = req.query;
+        console.log(userEmail, relatedUserEmail);
+        const query = { userEmail: userEmail, relatedUserEmail: relatedUserEmail };
+        const result = await notificationsCollection.deleteMany(query);
+        res.send(result);
+      }
+      catch (error) {
+        console.error("Error adding notification:", error);
+        res.status(500).json({ message: "Failed to delete notification" });
+      }
+    });
+    app.delete("/deleteAllNotification/:email", async (req, res) => {
+      const { email } = req.params;
+      console.log(email);
+      const query = { userEmail: email };
+      const result = await notificationsCollection.deleteMany(query);
+      res.send(result);
+    });
 
     // get popular post
 
-    app.get("/get-popular-posts", async (req, res) => {
-      const { page = 1, limit = 10 } = req.query; // default page=1, limit=10
+  app.get("/get-popular-posts", async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
 
-      try {
-        const result = await postsCollection
-          .aggregate([
-            {
-              $addFields: {
-                totalLikes: { $size: "$likes" }, // Count the number of likes in the array
-                totalEngagement: { $add: [{ $size: "$likes" }, "$comments"] }, // Sum of likes (as count) and comments
-              },
-            },
-            {
-              $sort: { totalEngagement: -1 }, // Sort by total engagement (likes + comments)
-            },
-            {
-              $skip: (page - 1) * limit, // Skip posts for previous pages
-            },
-            {
-              $limit: parseInt(limit), // Limit posts per page
-            },
-          ])
-          .toArray();
+  try {
+    const totalPosts = await postsCollection.countDocuments();
 
-        res.send(result);
-      } catch (error) {
-        res.status(500).send("An error occurred while fetching posts");
-      }
+    const posts = await postsCollection
+      .find()
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .toArray();
+
+    const sortedPosts = posts
+      .map(post => ({
+        ...post,
+        totalEngagement: post.likes.length + post.comments,
+      }))
+      .sort((a, b) => b.totalEngagement - a.totalEngagement); 
+
+    res.send({
+      posts: sortedPosts,
+      totalPosts
     });
+  } catch (error) {
+    res.status(500).send("An error occurred while fetching posts");
+  }
+});
+
+    
+    
+    
+    
 
     // Ruhul Amin
 
     // create jwt token
     app.post("/jwt", async (req, res) => {
       const user = req.body;
-      console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "1d",
       });
@@ -1139,21 +1235,38 @@ async function run() {
     // get - following post
 
     app.get("/get-following-posts/:email", async (req, res) => {
-      const email = req.params.email;
+  const email = req.params.email;
+  const page = parseInt(req.query.page) || 1; 
+  const limit = parseInt(req.query.limit) || 5; 
+  const skip = (page - 1) * limit; 
 
-      const query = { followerEmail: email };
-      const result = await followersCollection.find(query).toArray();
+  try {
+    const query = { followerEmail: email };
+    const result = await followersCollection.find(query).toArray();
 
-      if (result?.length) {
-        const followingEmails = result?.map(
-          (follower) => follower?.followingEmail
-        );
-        const query2 = { userEmail: { $in: followingEmails } };
-        const followingPosts = await postsCollection.find(query2).toArray();
+    if (result?.length) {
+      const followingEmails = result.map(
+        (follower) => follower.followingEmail
+      );
+      const query2 = { userEmail: { $in: followingEmails } };
 
-        res.send(followingPosts);
-      }
-    });
+      // Add sorting by "createdAt" in descending order and pagination using skip and limit
+      const followingPosts = await postsCollection
+        .find(query2)
+        .sort({ createdAt: -1 }) // Sort by latest "createdAt" first
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+
+      res.send(followingPosts);
+    } else {
+      res.send([]);
+    }
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching following posts", error });
+  }
+});
+
 
     // poll
     app.put("/posts/:id/poll/vote", async (req, res) => {
@@ -1279,7 +1392,6 @@ async function run() {
     app.post("/payment/success/:tranId", async (req, res) => {
       try {
         const { tranId } = req.params;
-        console.log(`Transaction ID: ${tranId}`); // For debugging
 
         const paymentData = await paymentDataCollection.findOne({
           tran_id: tranId,
@@ -1299,8 +1411,6 @@ async function run() {
           { $set: { userType: "premium" } }
         );
 
-        console.log(result, result2); // For debugging
-
         if (result.modifiedCount > 0 && result2.acknowledged) {
           res.redirect(
             `${process.env.BASE_URL}/premium-success/${encodeURIComponent(
@@ -1318,7 +1428,6 @@ async function run() {
     // payment failed
     app.post("/payment/failed/:tranId", async (req, res) => {
       const { tranId } = req.params;
-      console.log(`Transaction ID: ${tranId}`); // For debugging
 
       const result = await paymentDataCollection.deleteOne({ tran_id: tranId });
 
@@ -1338,7 +1447,6 @@ async function run() {
     });
     // get payment history for a admin
     app.get("/get-payment-history", async (req, res) => {
-
       const paymentHistory = await paymentDataCollection.find().toArray();
       res.send(paymentHistory);
     });
@@ -1436,7 +1544,7 @@ async function run() {
         });
       } catch (error) {
         console.error("Error liking/unliking post:", error);
-        res.status(500).json({ message: "An error occurred." });
+        res.status(500).json({ message: "An error occurred." })
       }
     });
 
@@ -1506,79 +1614,113 @@ async function run() {
           likesCount,
         });
       } catch (error) {
-
         res.status(500).json({ message: "An error occurred." });
       }
     });
 
-
-    // applay mentor
+    // applay mentor...........
+    // ...........................
 
     app.post("/applay-mentor", async (req, res) => {
-      const mentorInfo = req.body.mentorInfo;
-      console.log("mentorInfo", mentorInfo);
+      const mentorInfo = req.body;
+      // console.log("mentorInfo", mentorInfo);
+      const res1 = await mentorDataCollection.findOne({ useremail: mentorInfo.useremail });
+      if (res1) {
+        return res.send({ message: "You have already applied" });
+      }
 
       const newMentor = {
-        mentorInfo,
+        ...mentorInfo,
         status: "pending",
       };
       const result = await mentorDataCollection.insertOne(newMentor);
       res.send(result);
     })
+    app.get('/get-mentor/:email', async (req, res) => {
+      const email = req.params.email;
+      const result = await mentorDataCollection.findOne({ useremail: email });
+      if (result) {
+        res.send({ message: "You have already applied" });
+      }
+      else {
+        res.send({ message: "You can apply now ." })
+      }
 
-    app.get('/get-apply-mentor', async (req, res) => {
-      const result = await mentorDataCollection.find().toArray()
+    })
+
+    app.get("/get-apply-mentor", async (req, res) => {
+      const result = await mentorDataCollection.find().toArray();
+      res.send(result);
+    })
+    app.get('/get-all-payments', async (req, res) => {
+      const result = await paymentDataCollection.find().toArray()
       res.send(result);
     })
 
+    app.put("/make-mentor/:useremail", async (req, res) => {
+      const
+        useremail = req.params.useremail;
 
-
-    app.put('/make-mentor/:id', async (req, res) => {
-      const userId = req.params.id;
-    
       try {
         //  user's role to 'mentor' in usersCollection
-        const filter = { _id: new ObjectId(userId) };
+        // const filter = { _id: new ObjectId(userId) };
+        // Find and update the user's role to 'mentor' in usersCollection
+        const filter = { email: useremail };
         const updateUserDoc = {
           $set: {
-            role: 'mentor',
+            role: "mentor",
           },
         };
-    
-        const userResult = await usersCollection.updateOne(filter, updateUserDoc);
-    
+
+        const userResult = await usersCollection.updateOne(
+          filter,
+          updateUserDoc
+        );
+
         if (userResult.matchedCount === 0) {
-          return res.status(404).send({ message: 'User not found in usersCollection' });
+          return res
+            .status(404)
+            .send({ message: "User not found in usersCollection" });
         }
     
         //  user's status to 'mentor' in mentorDataCollection
 
-        const filter2 = {userId };
-        const updateMentorDoc = {
+        // Find and update the user's status to 'mentor' in mentorDataCollection
 
+        const filter2 = {
+          useremail
+        };
+        const updateMentorDoc = {
           $set: {
-            status: 'mentor',
+            status: "mentor",
           },
         };
-    
-        const mentorResult = await mentorDataCollection.updateOne(filter2, updateMentorDoc);
-    
+
+        const mentorResult = await mentorDataCollection.updateOne(
+          filter2,
+          updateMentorDoc
+        );
+
         if (mentorResult.matchedCount === 0) {
-          return res.status(404).send({ message: 'Mentor data not found in mentorDataCollection' });
+          return res
+            .status(404)
+            .send({ message: "Mentor data not found in mentorDataCollection" });
         }
-    
-        console.log('User update result:', userResult);
-        console.log('Mentor update result:', mentorResult);
-    
-        res.send({ message: 'User role updated to mentor and mentor status set' });
+
+        console.log("User update result:", userResult);
+        console.log("Mentor update result:", mentorResult);
+
+        res.send({
+          message: "User role updated to mentor and mentor status set",
+        });
       } catch (error) {
-        console.error(error);
+        console.error(error)
         res.status(500).send({ message: 'Error updating user role or mentor status' });
       }
     });
-
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
+
   } finally {
     // Ensures that the client will close when you finish/error
   }
