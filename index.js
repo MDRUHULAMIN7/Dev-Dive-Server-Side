@@ -1723,6 +1723,12 @@ async function run() {
           .send({ message: "Error updating user role or mentor status" });
       }
     });
+
+
+
+ 
+    
+
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
   } finally {
