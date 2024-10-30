@@ -1,9 +1,10 @@
 const express = require("express");
+const { ObjectId } = require("mongodb");
 const router = express.Router();
 
 module.exports = (reportDataCollection) => {
-  router.get("/getAllReport", async (req, res) => {
-    const cursor = reportDataCollection.find();
+  router.get("/allReports", async (req, res) => {
+    const cursor = reportDataCollection.find().sort({ createdAt: -1 });
     const result = await cursor.toArray();
     res.send(result);
   });
@@ -70,6 +71,13 @@ module.exports = (reportDataCollection) => {
         error,
       });
     }
+  });
+
+  router.delete("/adminDeleteReport/:id", async (req, res) => {
+    const id = req.params;
+    const query = { _id: new ObjectId(id) };
+    const result = await reportDataCollection.deleteOne(query);
+    res.send(result);
   });
 
   return router;

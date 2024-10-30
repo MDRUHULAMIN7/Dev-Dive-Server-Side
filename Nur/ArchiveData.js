@@ -53,7 +53,7 @@ module.exports = (archiveDataCollection) => {
       });
 
       if (existingArchive) {
-        console.log("Post already archived:", post_id);
+        // console.log("Post already archived:", post_id);
         return res.status(200).json({ archived: true });
       } else {
         // console.log("Post not archived.");
@@ -71,8 +71,8 @@ module.exports = (archiveDataCollection) => {
   router.post("/archiveData", async (req, res) => {
     try {
       const { post_id, archivedBy } = req.body; // Extract post_id from the request body
-      console.log("Received post_id:", post_id);
-      console.log("Received user email:", archivedBy.email);
+      // console.log("Received post_id:", post_id);
+      // console.log("Received user email:", archivedBy.email);
 
       // Check if the post_id already exists in the archive
       const existingPost = await archiveDataCollection.findOne({
@@ -81,7 +81,7 @@ module.exports = (archiveDataCollection) => {
       });
 
       if (existingPost) {
-        console.log("Post already archived by this user:", post_id);
+        // console.log("Post already archived by this user:", post_id);
         return res
           .status(400)
           .json({ message: "Post already archived by this user" });
@@ -91,7 +91,7 @@ module.exports = (archiveDataCollection) => {
       const result = await archiveDataCollection.insertOne(req.body);
 
       if (result.insertedId) {
-        console.log("Post archived successfully:", result.insertedId);
+        // console.log("Post archived successfully:", result.insertedId);
         return res.status(200).json({
           message: "Post archived successfully",
           result,
@@ -111,9 +111,9 @@ module.exports = (archiveDataCollection) => {
   router.delete("/unarchive/:postId", async (req, res) => {
     try {
       const { postId } = req.params;
-      console.log("Received postId to unarchive:", postId);
+      // console.log("Received postId to unarchive:", postId);
       const { email } = req.query;
-      console.log("Received email to unarchive:", email);
+      // console.log("Received email to unarchive:", email);
 
       const result = await archiveDataCollection.deleteOne({
         post_id: postId,
@@ -121,7 +121,7 @@ module.exports = (archiveDataCollection) => {
       });
 
       if (result.deletedCount > 0) {
-        console.log("Post unarchived successfully:", postId);
+        // console.log("Post unarchived successfully:", postId);
         return res
           .status(200)
           .json({ message: "Post unarchived successfully" });
