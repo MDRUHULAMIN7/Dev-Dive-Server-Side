@@ -22,8 +22,13 @@ module.exports = (postsCollection, usersCollection) => {
         .find({ likes: userId }) // Match user ID in the likes array
         .toArray();
 
-      console.log("Number of liked posts found:", likedPosts.length);
-      res.status(200).json(likedPosts);
+      if (likedPosts.length === 0) {
+        console.log("No liked posts found for user:", email);
+        return res.status(200).json({ message: "No liked posts found." });
+      } else {
+        console.log("Number of liked posts found:", likedPosts.length);
+        res.status(200).json(likedPosts);
+      }
     } catch (error) {
       console.error("Error fetching liked posts:", error);
       res.status(500).json({ message: "Failed to fetch liked posts." });
