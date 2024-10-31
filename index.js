@@ -1670,10 +1670,10 @@ async function run() {
     });
 
 
-    // app.get("/get-all-payments", async (req, res) => {
-    //   const result = await paymentDataCollection.find().toArray();
-    //   res.send(result);
-    // });
+    app.get("/get-all-payments", async (req, res) => {
+      const result = await paymentDataCollection.find().toArray();
+      res.send(result);
+    });
 
 
    
@@ -1717,7 +1717,26 @@ async function run() {
           console.error(error);
           res.status(500).send({ message: "Error updating user role or mentor status" });
       }
-  });
+    });
+
+
+
+ 
+    
+ app.get('/get-single-post/:id', async (req, res) => {
+
+   const id = req.params.id;
+   try {
+     const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+     if (!post) {
+       return res.status(404).json({ message: "Post not found." });
+     }
+     res.send(post);
+   } catch (error) {
+     console.error("Error fetching post:", error);
+     res.status(500).json({ message: "An error occurred." });
+   }
+ })
   
 
     await client.db("admin").command({ ping: 1 });
