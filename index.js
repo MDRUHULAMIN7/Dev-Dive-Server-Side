@@ -16,36 +16,36 @@ const is_live = false;
 
 // Middleware
 
-// app.use(
-//   cors((req, callback) => {
-//     const origin = req.headers.origin || "null";
+app.use(
+  cors((req, callback) => {
+    const origin = req.headers.origin || "null";
 
-//     const isPaymentRequest =
-//       origin === "null" &&
-//       (req.path.startsWith("/payment/success") ||
-//         req.path.startsWith("/payment/failed"));
+    const isPaymentRequest =
+      origin === "null" &&
+      (req.path.startsWith("/payment/success") ||
+        req.path.startsWith("/payment/failed"));
 
-//     const isAllowed =
-//       isPaymentRequest ||
-//       localhostRegex.test(origin) ||
-//       allowedOrigins.includes(origin);
+    const isAllowed =
+      isPaymentRequest ||
+      localhostRegex.test(origin) ||
+      allowedOrigins.includes(origin);
 
-//     if (isAllowed) {
-//       callback(null, {
-//         origin: origin,
-//         credentials: true,
-//         methods: "GET, POST, PUT, DELETE, OPTIONS",
-//         allowedHeaders:
-//           "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-//       });
-//     } else {
-//       console.error("CORS blocked for origin:", origin);
-//       callback(new Error("Not allowed by CORS"), false);
-//     }
-//   })
-// );
+    if (isAllowed) {
+      callback(null, {
+        origin: origin,
+        credentials: true,
+        methods: "GET, POST, PUT, DELETE, OPTIONS",
+        allowedHeaders:
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      });
+    } else {
+      console.error("CORS blocked for origin:", origin);
+      callback(new Error("Not allowed by CORS"), false);
+    }
+  })
+);
 
-app.use(cors())
+// app.use(cors())
 
 // app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
@@ -1576,8 +1576,8 @@ async function run() {
 
         const dislikes = Array.isArray(post.dislikes) ? post.dislikes : [];
 
-        const isDisLikedruhul = dislikes.includes(userId); 
-        const dislikesCount = dislikes.length; 
+        const isDisLikedruhul = dislikes.includes(userId);
+        const dislikesCount = dislikes.length;
 
         res.json({
           isDisLiked: isDisLikedruhul,
@@ -1611,11 +1611,11 @@ async function run() {
           return res.status(404).json({ message: "Post not found." });
         }
 
-        
+
         const likes = Array.isArray(post.likes) ? post.likes : [];
 
-        const isLiked = likes.includes(userId); 
-        const likesCount = likes.length; 
+        const isLiked = likes.includes(userId);
+        const likesCount = likes.length;
 
         // Send the response
         res.json({
@@ -1676,22 +1676,22 @@ async function run() {
     });
 
 
-   
+
 
     app.put("/make-mentor/:useremail", async (req, res) => {
       const useremail = req.params.useremail;
-  
+
       try {
-          
+
           const mentorData = await mentorDataCollection.findOne({ useremail });
           if (!mentorData) {
               return res.status(404).send({ message: "Mentor data not found in mentorDataCollection" });
           }
-  
-          
+
+
           const newStatus = mentorData.status === "mentor" ? "pending" : "mentor";
-  
-          
+
+
           const updateUserDoc = {
               $set: {
                   role: newStatus === "mentor" ? "mentor" : "user",
@@ -1702,14 +1702,14 @@ async function run() {
                   status: newStatus,
               },
           };
-  
+
           const userResult = await usersCollection.updateOne({ email: useremail }, updateUserDoc);
           const mentorResult = await mentorDataCollection.updateOne({ useremail }, updateMentorDoc);
-  
+
           if (userResult.matchedCount === 0) {
               return res.status(404).send({ message: "User not found in usersCollection" });
           }
-  
+
           res.send({
               message: `User status successfully updated to ${newStatus}.`,
           });
@@ -1721,8 +1721,8 @@ async function run() {
 
 
 
- 
-    
+
+
  app.get('/get-single-post/:id', async (req, res) => {
 
    const id = req.params.id;
@@ -1737,7 +1737,7 @@ async function run() {
      res.status(500).json({ message: "An error occurred." });
    }
  })
-  
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
