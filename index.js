@@ -1738,6 +1738,28 @@ async function run() {
    }
  })
   
+//  delete single folloer
+// DELETE endpoint to remove a specific follower
+app.delete("/followers/:followingEmail/:followerEmail", async (req, res) => {
+  const { followingEmail, followerEmail } = req.params;
+
+  try {
+    const result = await followersCollection.deleteOne({
+      followingEmail,
+      followerEmail,
+    });
+
+    if (result.deletedCount === 1) {
+      res.status(200).json({ message: "Follower deleted successfully" });
+    } else {
+      res.status(404).json({ error: "Follower not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting follower:", error);
+    res.status(500).json({ error: "Server error occurred" });
+  }
+});
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
