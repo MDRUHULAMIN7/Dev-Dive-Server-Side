@@ -16,36 +16,36 @@ const is_live = false;
 
 // Middleware
 
-// app.use(
-//   cors((req, callback) => {
-//     const origin = req.headers.origin || "null";
+app.use(
+  cors((req, callback) => {
+    const origin = req.headers.origin || "null";
 
-//     const isPaymentRequest =
-//       origin === "null" &&
-//       (req.path.startsWith("/payment/success") ||
-//         req.path.startsWith("/payment/failed"));
+    const isPaymentRequest =
+      origin === "null" &&
+      (req.path.startsWith("/payment/success") ||
+        req.path.startsWith("/payment/failed"));
 
-//     const isAllowed =
-//       isPaymentRequest ||
-//       localhostRegex.test(origin) ||
-//       allowedOrigins.includes(origin);
+    const isAllowed =
+      isPaymentRequest ||
+      localhostRegex.test(origin) ||
+      allowedOrigins.includes(origin);
 
-//     if (isAllowed) {
-//       callback(null, {
-//         origin: origin,
-//         credentials: true,
-//         methods: "GET, POST, PUT, DELETE, OPTIONS",
-//         allowedHeaders:
-//           "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-//       });
-//     } else {
-//       console.error("CORS blocked for origin:", origin);
-//       callback(new Error("Not allowed by CORS"), false);
-//     }
-//   })
-// );
+    if (isAllowed) {
+      callback(null, {
+        origin: origin,
+        credentials: true,
+        methods: "GET, POST, PUT, DELETE, OPTIONS",
+        allowedHeaders:
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      });
+    } else {
+      console.error("CORS blocked for origin:", origin);
+      callback(new Error("Not allowed by CORS"), false);
+    }
+  })
+);
 
-app.use(cors())
+// app.use(cors())
 
 // app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
@@ -1576,8 +1576,8 @@ async function run() {
 
         const dislikes = Array.isArray(post.dislikes) ? post.dislikes : [];
 
-        const isDisLikedruhul = dislikes.includes(userId); 
-        const dislikesCount = dislikes.length; 
+        const isDisLikedruhul = dislikes.includes(userId);
+        const dislikesCount = dislikes.length;
 
         res.json({
           isDisLiked: isDisLikedruhul,
@@ -1611,11 +1611,10 @@ async function run() {
           return res.status(404).json({ message: "Post not found." });
         }
 
-        
         const likes = Array.isArray(post.likes) ? post.likes : [];
 
-        const isLiked = likes.includes(userId); 
-        const likesCount = likes.length; 
+        const isLiked = likes.includes(userId);
+        const likesCount = likes.length;
 
         // Send the response
         res.json({
@@ -1631,7 +1630,6 @@ async function run() {
       const result = await mentorDataCollection.find().toArray();
       res.send(result);
     });
-
 
     // applay mentor...........
     // ...........................
@@ -1669,118 +1667,119 @@ async function run() {
       res.send(result);
     });
 
-
     app.get("/get-all-payments", async (req, res) => {
       const result = await paymentDataCollection.find().toArray();
       res.send(result);
     });
 
-
-   
-
     app.put("/make-mentor/:useremail", async (req, res) => {
       const useremail = req.params.useremail;
-  
+
       try {
-          
-          const mentorData = await mentorDataCollection.findOne({ useremail });
-          if (!mentorData) {
-              return res.status(404).send({ message: "Mentor data not found in mentorDataCollection" });
-          }
-  
-          
-          const newStatus = mentorData.status === "mentor" ? "pending" : "mentor";
-  
-          
-          const updateUserDoc = {
-              $set: {
-                  role: newStatus === "mentor" ? "mentor" : "user",
-              },
-          };
-          const updateMentorDoc = {
-              $set: {
-                  status: newStatus,
-              },
-          };
-  
-          const userResult = await usersCollection.updateOne({ email: useremail }, updateUserDoc);
-          const mentorResult = await mentorDataCollection.updateOne({ useremail }, updateMentorDoc);
-  
-          if (userResult.matchedCount === 0) {
-              return res.status(404).send({ message: "User not found in usersCollection" });
-          }
-  
-          res.send({
-              message: `User status successfully updated to ${newStatus}.`,
-          });
+        const mentorData = await mentorDataCollection.findOne({ useremail });
+        if (!mentorData) {
+          return res
+            .status(404)
+            .send({ message: "Mentor data not found in mentorDataCollection" });
+        }
+
+        const newStatus = mentorData.status === "mentor" ? "pending" : "mentor";
+
+        const updateUserDoc = {
+          $set: {
+            role: newStatus === "mentor" ? "mentor" : "user",
+          },
+        };
+        const updateMentorDoc = {
+          $set: {
+            status: newStatus,
+          },
+        };
+
+        const userResult = await usersCollection.updateOne(
+          { email: useremail },
+          updateUserDoc
+        );
+        const mentorResult = await mentorDataCollection.updateOne(
+          { useremail },
+          updateMentorDoc
+        );
+
+        if (userResult.matchedCount === 0) {
+          return res
+            .status(404)
+            .send({ message: "User not found in usersCollection" });
+        }
+
+        res.send({
+          message: `User status successfully updated to ${newStatus}.`,
+        });
       } catch (error) {
-          console.error(error);
-          res.status(500).send({ message: "Error updating user role or mentor status" });
+        console.error(error);
+        res
+          .status(500)
+          .send({ message: "Error updating user role or mentor status" });
       }
     });
 
-
-
- 
-    
- app.get('/get-single-post/:id', async (req, res) => {
-
-   const id = req.params.id;
-   try {
-     const post = await postsCollection.findOne({ _id: new ObjectId(id) });
-     if (!post) {
-       return res.status(404).json({ message: "Post not found." });
-     }
-     res.send(post);
-   } catch (error) {
-     console.error("Error fetching post:", error);
-     res.status(500).json({ message: "An error occurred." });
-   }
- })
-  
-//  delete single folloer
-// DELETE endpoint to remove a specific follower
-app.delete("/followers/:followingEmail/:followerEmail", async (req, res) => {
-  const { followingEmail, followerEmail } = req.params;
-
-  try {
-    const result = await followersCollection.deleteOne({
-      followingEmail,
-      followerEmail,
+    app.get("/get-single-post/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+        if (!post) {
+          return res.status(404).json({ message: "Post not found." });
+        }
+        res.send(post);
+      } catch (error) {
+        console.error("Error fetching post:", error);
+        res.status(500).json({ message: "An error occurred." });
+      }
     });
 
-    if (result.deletedCount === 1) {
-      res.status(200).json({ message: "Follower deleted successfully" });
-    } else {
-      res.status(404).json({ error: "Follower not found" });
-    }
-  } catch (error) {
-    console.error("Error deleting follower:", error);
-    res.status(500).json({ error: "Server error occurred" });
-  }
-});
+    //  delete single folloer
+    // DELETE endpoint to remove a specific follower
+    app.delete(
+      "/followers/:followingEmail/:followerEmail",
+      async (req, res) => {
+        const { followingEmail, followerEmail } = req.params;
 
-// update userType
+        try {
+          const result = await followersCollection.deleteOne({
+            followingEmail,
+            followerEmail,
+          });
 
-app.put(`/update-user-type/:email`, async (req, res) => {
-  try {
-    const newUserType = req.body.data; 
-    const { email } = req.params;
-    const query = { email: email };
-    const updateDoc = {
-      $set: {
-        userType: newUserType,
-      },
-    };
+          if (result.deletedCount === 1) {
+            res.status(200).json({ message: "Follower deleted successfully" });
+          } else {
+            res.status(404).json({ error: "Follower not found" });
+          }
+        } catch (error) {
+          console.error("Error deleting follower:", error);
+          res.status(500).json({ error: "Server error occurred" });
+        }
+      }
+    );
 
-    const result = await usersCollection.updateOne(query, updateDoc);
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: 'Failed to update user type' });
-  }
-});
+    // update userType
 
+    app.put(`/update-user-type/:email`, async (req, res) => {
+      try {
+        const newUserType = req.body.data;
+        const { email } = req.params;
+        const query = { email: email };
+        const updateDoc = {
+          $set: {
+            userType: newUserType,
+          },
+        };
 
+        const result = await usersCollection.updateOne(query, updateDoc);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to update user type" });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
