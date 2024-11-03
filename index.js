@@ -16,36 +16,36 @@ const is_live = false;
 
 // Middleware
 
-// app.use(
-//   cors((req, callback) => {
-//     const origin = req.headers.origin || "null";
+app.use(
+  cors((req, callback) => {
+    const origin = req.headers.origin || "null";
 
-//     const isPaymentRequest =
-//       origin === "null" &&
-//       (req.path.startsWith("/payment/success") ||
-//         req.path.startsWith("/payment/failed"));
+    const isPaymentRequest =
+      origin === "null" &&
+      (req.path.startsWith("/payment/success") ||
+        req.path.startsWith("/payment/failed"));
 
-//     const isAllowed =
-//       isPaymentRequest ||
-//       localhostRegex.test(origin) ||
-//       allowedOrigins.includes(origin);
+    const isAllowed =
+      isPaymentRequest ||
+      localhostRegex.test(origin) ||
+      allowedOrigins.includes(origin);
 
-//     if (isAllowed) {
-//       callback(null, {
-//         origin: origin,
-//         credentials: true,
-//         methods: "GET, POST, PUT, DELETE, OPTIONS",
-//         allowedHeaders:
-//           "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-//       });
-//     } else {
-//       console.error("CORS blocked for origin:", origin);
-//       callback(new Error("Not allowed by CORS"), false);
-//     }
-//   })
-// );
+    if (isAllowed) {
+      callback(null, {
+        origin: origin,
+        credentials: true,
+        methods: "GET, POST, PUT, DELETE, OPTIONS",
+        allowedHeaders:
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      });
+    } else {
+      console.error("CORS blocked for origin:", origin);
+      callback(new Error("Not allowed by CORS"), false);
+    }
+  })
+);
 
-app.use(cors())
+// app.use(cors())
 
 // app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.json());
@@ -1576,8 +1576,8 @@ async function run() {
 
         const dislikes = Array.isArray(post.dislikes) ? post.dislikes : [];
 
-        const isDisLikedruhul = dislikes.includes(userId); // Check if user has liked the post
-        const dislikesCount = dislikes.length; // Get the number of likes
+        const isDisLikedruhul = dislikes.includes(userId);
+        const dislikesCount = dislikes.length;
 
         res.json({
           isDisLiked: isDisLikedruhul,
@@ -1611,11 +1611,10 @@ async function run() {
           return res.status(404).json({ message: "Post not found." });
         }
 
-        // Ensure 'likes' is treated as an array (even if it's missing)
         const likes = Array.isArray(post.likes) ? post.likes : [];
 
-        const isLiked = likes.includes(userId); // Check if user has liked the post
-        const likesCount = likes.length; // Get the number of likes
+        const isLiked = likes.includes(userId);
+        const likesCount = likes.length;
 
         // Send the response
         res.json({
@@ -1627,7 +1626,13 @@ async function run() {
       }
     });
 
-    // applay mentor
+    app.get("/get-apply-mentor", async (req, res) => {
+      const result = await mentorDataCollection.find().toArray();
+      res.send(result);
+    });
+
+    // applay mentor...........
+    // ...........................
 
     app.post("/applay-mentor", async (req, res) => {
       const mentorInfo = req.body;
@@ -1646,6 +1651,7 @@ async function run() {
       const result = await mentorDataCollection.insertOne(newMentor);
       res.send(result);
     });
+
     app.get("/get-mentor/:email", async (req, res) => {
       const email = req.params.email;
       const result = await mentorDataCollection.findOne({ useremail: email });
@@ -1660,6 +1666,7 @@ async function run() {
       const result = await mentorDataCollection.find().toArray();
       res.send(result);
     });
+
     app.get("/get-all-payments", async (req, res) => {
       const result = await paymentDataCollection.find().toArray();
       res.send(result);
@@ -1669,17 +1676,33 @@ async function run() {
       const useremail = req.params.useremail;
 
       try {
-        // Find and update the user's role to 'mentor' in usersCollection
-        const filter = { email: useremail };
+        const mentorData = await mentorDataCollection.findOne({ useremail });
+        if (!mentorData) {
+          return res
+            .status(404)
+            .send({ message: "Mentor data not found in mentorDataCollection" });
+        }
+
+        const newStatus = mentorData.status === "mentor" ? "pending" : "mentor";
+
         const updateUserDoc = {
           $set: {
-            role: "mentor",
+            role: newStatus === "mentor" ? "mentor" : "user",
+          },
+        };
+        const updateMentorDoc = {
+          $set: {
+            status: newStatus,
           },
         };
 
         const userResult = await usersCollection.updateOne(
-          filter,
+          { email: useremail },
           updateUserDoc
+        );
+        const mentorResult = await mentorDataCollection.updateOne(
+          { useremail },
+          updateMentorDoc
         );
 
         if (userResult.matchedCount === 0) {
@@ -1688,33 +1711,8 @@ async function run() {
             .send({ message: "User not found in usersCollection" });
         }
 
-        // Find and update the user's status to 'mentor' in mentorDataCollection
-
-        const filter2 = {
-          useremail,
-        };
-        const updateMentorDoc = {
-          $set: {
-            status: "mentor",
-          },
-        };
-
-        const mentorResult = await mentorDataCollection.updateOne(
-          filter2,
-          updateMentorDoc
-        );
-
-        if (mentorResult.matchedCount === 0) {
-          return res
-            .status(404)
-            .send({ message: "Mentor data not found in mentorDataCollection" });
-        }
-
-        console.log("User update result:", userResult);
-        console.log("Mentor update result:", mentorResult);
-
         res.send({
-          message: "User role updated to mentor and mentor status set",
+          message: `User status successfully updated to ${newStatus}.`,
         });
       } catch (error) {
         console.error(error);
@@ -1723,6 +1721,66 @@ async function run() {
           .send({ message: "Error updating user role or mentor status" });
       }
     });
+
+    app.get("/get-single-post/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const post = await postsCollection.findOne({ _id: new ObjectId(id) });
+        if (!post) {
+          return res.status(404).json({ message: "Post not found." });
+        }
+        res.send(post);
+      } catch (error) {
+        console.error("Error fetching post:", error);
+        res.status(500).json({ message: "An error occurred." });
+      }
+    });
+
+    //  delete single folloer
+    // DELETE endpoint to remove a specific follower
+    app.delete(
+      "/followers/:followingEmail/:followerEmail",
+      async (req, res) => {
+        const { followingEmail, followerEmail } = req.params;
+
+        try {
+          const result = await followersCollection.deleteOne({
+            followingEmail,
+            followerEmail,
+          });
+
+          if (result.deletedCount === 1) {
+            res.status(200).json({ message: "Follower deleted successfully" });
+          } else {
+            res.status(404).json({ error: "Follower not found" });
+          }
+        } catch (error) {
+          console.error("Error deleting follower:", error);
+          res.status(500).json({ error: "Server error occurred" });
+        }
+      }
+    );
+
+    // update userType
+
+    app.put(`/update-user-type/:email`, async (req, res) => {
+      try {
+        const newUserType = req.body.data;
+        const { email } = req.params;
+        const query = { email: email };
+        const updateDoc = {
+          $set: {
+            userType: newUserType,
+          },
+        };
+
+        const result = await usersCollection.updateOne(query, updateDoc);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to update user type" });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
   } finally {
