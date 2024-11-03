@@ -1760,6 +1760,27 @@ app.delete("/followers/:followingEmail/:followerEmail", async (req, res) => {
   }
 });
 
+// update userType
+
+app.put(`/update-user-type/:email`, async (req, res) => {
+  try {
+    const newUserType = req.body.data; 
+    const { email } = req.params;
+    const query = { email: email };
+    const updateDoc = {
+      $set: {
+        userType: newUserType,
+      },
+    };
+
+    const result = await usersCollection.updateOne(query, updateDoc);
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to update user type' });
+  }
+});
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("DevDive successfully connected to MongoDB!");
