@@ -1,5 +1,5 @@
 DevDive - Developer Community Platform
-live-link : https://devdive1.netlify.app/ client-side-repo: https://github.com/MDRUHULAMIN7/DevDive-Client-Side
+live-link : https://devdive1.netlify.app/ server-side-repo: https://github.com/MDRUHULAMIN7/Dev-Dive-Server-Side
 
 Welcome to DevDive! This project is a developer-centric platform designed to foster a collaborative environment for developers through real-time problem-solving, knowledge sharing, and mentorship. DevDive supports premium features like mentor access, an integrated AI chatbot, a live code editor, and interactive notifications, creating a rich ecosystem for developers to grow and connect. DevDive is built to empower developers by offering a range of tools and social features that enhance learning, networking, and development practices. With unique capabilities like real-time chat with mentors, a responsive code editor, and cross-platform post sharing, DevDive provides an all-in-one solution for developer engagement and productivity.
 
